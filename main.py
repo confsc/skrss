@@ -1,11 +1,11 @@
 import sys
 from PyQt5.QtWidgets import QApplication
-from ui.main_window import MainWindow
+from ui.start_screen import StartScreen
 
 
 def main():
     app = QApplication(sys.argv)
-    window = MainWindow()
+    window = StartScreen()
     window.show()
     sys.exit(app.exec_())
 
