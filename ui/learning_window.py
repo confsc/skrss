@@ -5,19 +5,17 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QFont
-from logic.data_loader import load_stations
+from logic.data_loader import load_stations, resource_path
 from ui.quiz_dialog import QuizDialog
 
 
 class StationListWidget(QWidget):
-    """Вкладка со списком станций одной категории."""
-
     def __init__(self, category, parent_window):
         super().__init__()
         self.category = category
         self.parent_window = parent_window
         self.stations = [s for s in load_stations() if s["category"] == category]
-        self.studied = parent_window.studied   # общий set на всё окно
+        self.studied = parent_window.studied
         self.current_station = None
 
         self.init_ui()
@@ -26,7 +24,6 @@ class StationListWidget(QWidget):
         layout = QHBoxLayout(self)
         splitter = QSplitter(Qt.Horizontal)
 
-        # --- Левая часть: список ---
         left = QWidget()
         left_layout = QVBoxLayout(left)
         left_layout.addWidget(QLabel("<b>Выберите станцию:</b>"))
@@ -37,7 +34,6 @@ class StationListWidget(QWidget):
 
         self.refresh_list()
 
-        # --- Правая часть: ТТХ ---
         right = QWidget()
         right_layout = QVBoxLayout(right)
 
@@ -85,14 +81,16 @@ class StationListWidget(QWidget):
 
         self.title_label.setText(station["name"])
 
+        # ===== ФОТО — используем resource_path =====
         if station.get("image"):
-            pix = QPixmap(station["image"])
+            img_path = resource_path(station["image"])
+            pix = QPixmap(img_path)
             if not pix.isNull():
                 self.image_label.setPixmap(
                     pix.scaled(400, 250, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 )
             else:
-                self.image_label.setText("(картинка не найдена)")
+                self.image_label.setText(f"(картинка не найдена: {station['image']})")
         else:
             self.image_label.setText("(картинка отсутствует)")
 
@@ -121,7 +119,7 @@ class LearningWindow(QMainWindow):
     def __init__(self, back_callback):
         super().__init__()
         self.back_callback = back_callback
-        self.studied = set()   # сбрасывается при каждом запуске
+        self.studied = set()
 
         self.setWindowTitle("Режим обучения")
         self.resize(1200, 750)
@@ -130,7 +128,6 @@ class LearningWindow(QMainWindow):
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
 
-        # Кнопка «Назад»
         top = QHBoxLayout()
         back_btn = QPushButton("← Назад на стартовый экран")
         back_btn.clicked.connect(self.go_back)
@@ -138,7 +135,6 @@ class LearningWindow(QMainWindow):
         top.addStretch()
         layout.addLayout(top)
 
-        # Вкладки
         tabs = QTabWidget()
         tabs.addTab(StationListWidget("radio", self), "Радиорелейные станции")
         tabs.addTab(StationListWidget("satellite", self), "Спутниковые станции")
