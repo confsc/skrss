@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QLineEdit, QComboBox, QPushButton, QMessageBox, QScrollArea
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPixmap, QFont
+from PyQt5.QtGui import QPixmap
 import random
 from logic.data_loader import load_stations
 from logic.scoring import check_answer
@@ -17,7 +17,6 @@ class QuizWindow(QMainWindow):
         self.setWindowTitle("Режим контроля")
         self.resize(1100, 800)
 
-        # Случайная станция
         stations = load_stations()
         self.station = random.choice(stations)
         self.inputs = {}
@@ -26,7 +25,6 @@ class QuizWindow(QMainWindow):
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
 
-        # Кнопка назад
         top = QHBoxLayout()
         back_btn = QPushButton("← Назад на стартовый экран")
         back_btn.clicked.connect(self.go_back)
@@ -34,11 +32,9 @@ class QuizWindow(QMainWindow):
         top.addStretch()
         layout.addLayout(top)
 
-        # Заголовок
         title = QLabel(f"<h2>Станция: {self.station['name']}</h2>")
         layout.addWidget(title)
 
-        # Картинка
         img = QLabel()
         img.setAlignment(Qt.AlignCenter)
         if self.station.get("image"):
@@ -49,7 +45,6 @@ class QuizWindow(QMainWindow):
 
         layout.addWidget(QLabel("Заполните тактико-технические характеристики:"))
 
-        # Скролл для полей
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         inner = QWidget()
@@ -81,7 +76,6 @@ class QuizWindow(QMainWindow):
         scroll.setWidget(inner)
         layout.addWidget(scroll)
 
-        # Кнопка «Проверить»
         check_btn = QPushButton("Проверить")
         check_btn.setStyleSheet("font-size: 16px; padding: 12px;")
         check_btn.clicked.connect(self.check)
@@ -118,10 +112,12 @@ class QuizWindow(QMainWindow):
 
         msg = f"Результат: {total_score:.1f} из {max_score:.1f} баллов ({percent:.1f}%)"
         if errors:
-            msg += "\n\nОшибки:\n" + "\n".join(errors[:10])   # не больше 10 в окне
+            msg += "\n\nОшибки:\n" + "\n".join(errors[:10])
             if len(errors) > 10:
                 msg += f"\n... и ещё {len(errors) - 10} ошибок."
         else:
             msg += "\n\n🎉 Все ответы верны!"
 
+        # Показываем результат и после OK возвращаемся на стартовый экран
         QMessageBox.information(self, "Результат контроля", msg)
+        self.go_back()
