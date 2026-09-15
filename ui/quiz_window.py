@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
 import random
-from logic.data_loader import load_stations
+from logic.data_loader import load_stations, resource_path
 from logic.scoring import check_answer
 
 
@@ -35,12 +35,16 @@ class QuizWindow(QMainWindow):
         title = QLabel(f"<h2>Станция: {self.station['name']}</h2>")
         layout.addWidget(title)
 
+        # ===== ФОТО — через resource_path =====
         img = QLabel()
         img.setAlignment(Qt.AlignCenter)
         if self.station.get("image"):
-            pix = QPixmap(self.station["image"])
+            img_path = resource_path(self.station["image"])
+            pix = QPixmap(img_path)
             if not pix.isNull():
                 img.setPixmap(pix.scaled(400, 250, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            else:
+                img.setText("(картинка не найдена)")
         layout.addWidget(img)
 
         layout.addWidget(QLabel("Заполните тактико-технические характеристики:"))
@@ -118,6 +122,5 @@ class QuizWindow(QMainWindow):
         else:
             msg += "\n\n🎉 Все ответы верны!"
 
-        # Показываем результат и после OK возвращаемся на стартовый экран
         QMessageBox.information(self, "Результат контроля", msg)
         self.go_back()
