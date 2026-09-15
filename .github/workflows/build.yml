@@ -21,7 +21,13 @@ jobs:
           pip install pyinstaller
 
       - name: Build EXE
-        run: pyinstaller --onefile --windowed --name RRSTrainer --add-data "data;data" --add-data "images;images" main.py
+        run: >
+          pyinstaller --onefile --windowed --name RRSTrainer
+          --icon icon.ico
+          --add-data "data;data"
+          --add-data "images;images"
+          --add-data "icon.ico;."
+          main.py
 
       - uses: actions/upload-artifact@v4
         with:
