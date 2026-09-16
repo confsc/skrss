@@ -1,3 +1,6 @@
+import random
+
+
 def check_answer(spec, user_answer):
     """Проверяет ответ ученика. True — верно."""
     if not user_answer:
@@ -37,6 +40,14 @@ def check_answer(spec, user_answer):
 
 
 def get_key_specs(station, count=5):
-    """Возвращает до `count` ключевых ТТХ (weight == 1.0)."""
-    key = [s for s in station["specs"] if s.get("weight", 0.5) == 1.0]
-    return key[:count]
+    """
+    Возвращает СЛУЧАЙНЫЕ `count` ТТХ из ВСЕХ ТТХ станции.
+    Без разделения на ключевые и дополнительные.
+    При каждом вызове — новый случайный набор.
+    """
+    all_specs = list(station["specs"])
+    if len(all_specs) <= count:
+        result = list(all_specs)
+        random.shuffle(result)
+        return result
+    return random.sample(all_specs, count)
