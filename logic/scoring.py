@@ -35,15 +35,12 @@ def check_answer(spec, user_answer):
         except ValueError:
             return False
 
-    # text по умолчанию
     return user.lower() == correct.lower()
 
 
 def get_key_specs(station, count=5):
     """
-    Возвращает СЛУЧАЙНЫЕ `count` ТТХ из ВСЕХ ТТХ станции.
-    Без разделения на ключевые и дополнительные.
-    При каждом вызове — новый случайный набор.
+    Для ОБУЧЕНИЯ — 5 случайных из ВСЕХ ТТХ.
     """
     all_specs = list(station["specs"])
     if len(all_specs) <= count:
@@ -51,3 +48,29 @@ def get_key_specs(station, count=5):
         random.shuffle(result)
         return result
     return random.sample(all_specs, count)
+
+
+def get_quiz_specs(station, total=7, key_count=3):
+    """
+    Для КОНТРОЛЯ — total вопросов: key_count ключевых + остальные случайные.
+    Если ключевых меньше key_count — добирает случайными.
+    """
+    all_specs = list(station["specs"])
+    key = [s for s in all_specs if s.get("weight", 0.5) == 1.0]
+
+    result = []
+
+    # 1) Ключевые
+    if len(key) >= key_count:
+        result.extend(random.sample(key, key_count))
+    else:
+        result.extend(key)
+
+    # 2) Добираем из тех, что ещё не попали
+    remaining_pool = [s for s in all_specs if s not in result]
+    remaining = total - len(result)
+    if remaining > 0 and remaining_pool:
+        result.extend(random.sample(remaining_pool, min(remaining, len(remaining_pool))))
+
+    random.shuffle(result)
+    return result
