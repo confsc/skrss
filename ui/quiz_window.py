@@ -1,12 +1,121 @@
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QLineEdit, QComboBox, QPushButton, QMessageBox, QScrollArea
+    QPushButton, QTabWidget, QListWidget, QListWidgetItem,
+    QMessageBox
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QFont
 import random
-from logic.data_loader import load_stations, resource_path
-from logic.scoring import check_answer
+from logic.data_loader import load_stations
+from ui.quiz_dialog import QuizDialog
+
+
+class StationListTab(QWidget):
+    """Вкладка «Контроль по станциям» — список всех станций."""
+
+    def __init__(self):
+        super().__init__()
+        self.stations = load_stations()
+
+        layout = QVBoxLayout(self)
+
+        title = QLabel("<h3>Выберите станцию для контроля</h3>")
+        layout.addWidget(title)
+        layout.addWidget(QLabel("Двойной клик по станции — начать контроль (7 вопросов)"))
+
+        self.list_widget = QListWidget()
+        self.list_widget.itemDoubleClicked.connect(self.start_control)
+
+        # Группируем: сначала радиорелейные, потом спутниковые
+        radio = [s for s in self.stations if s["category"] == "radio"]
+        satellite = [s for s in self.stations if s["category"] == "satellite"]
+
+        header_radio = QListWidgetItem("── РАДИОРЕЛЕЙНЫЕ СТАНЦИИ ──")
+        header_radio.setFlags(Qt.NoItemFlags)
+        header_radio.setForeground(Qt.darkGreen)
+        f = QFont()
+        f.setBold(True)
+        header_radio.setFont(f)
+        self.list_widget.addItem(header_radio)
+
+        for s in radio:
+            item = QListWidgetItem("  " + s["name"])
+            item.setData(Qt.UserRole, s["id"])
+            self.list_widget.addItem(item)
+
+        header_sat = QListWidgetItem("── СПУТНИКОВЫЕ СТАНЦИИ ──")
+        header_sat.setFlags(Qt.NoItemFlags)
+        header_sat.setForeground(Qt.darkBlue)
+        header_sat.setFont(f)
+        self.list_widget.addItem(header_sat)
+
+        for s in satellite:
+            item = QListWidgetItem("  " + s["name"])
+            item.setData(Qt.UserRole, s["id"])
+            self.list_widget.addItem(item)
+
+        layout.addWidget(self.list_widget)
+
+    def start_control(self, item):
+        station_id = item.data(Qt.UserRole)
+        if not station_id:
+            return
+
+        station = next((s for s in self.stations if s["id"] == station_id), None)
+        if not station:
+            return
+
+        dialog = QuizDialog(station, self, count=7, is_control=True)
+        dialog.exec_()
+
+
+class RandomStationTab(QWidget):
+    """Вкладка «Контроль по всем станциям» — случайная станция."""
+
+    def __init__(self):
+        super().__init__()
+        self.stations = load_stations()
+
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignCenter)
+
+        title = QLabel("<h2>Контроль по всем станциям</h2>")
+        title.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title)
+
+        info = QLabel(
+            "Программа выберет случайную станцию из всех 28.\n"
+            "Вам будет предложено 7 вопросов:\n"
+            "3 ключевых + 4 случайных."
+        )
+        info.setAlignment(Qt.AlignCenter)
+        info.setStyleSheet("font-size: 14px; color: #555;")
+        layout.addWidget(info)
+
+        layout.addSpacing(40)
+
+        btn = QPushButton("🎲 Начать контроль по случайной станции")
+        btn.setFixedSize(500, 80)
+        btn.setStyleSheet(
+            "QPushButton { font-size: 16px; background-color: #2196F3; "
+            "color: white; border-radius: 15px; }"
+            "QPushButton:hover { background-color: #1976D2; }"
+        )
+        btn.clicked.connect(self.start_control)
+
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn)
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+
+    def start_control(self):
+        if not self.stations:
+            QMessageBox.warning(self, "Ошибка", "Нет станций в базе.")
+            return
+        station = random.choice(self.stations)
+        dialog = QuizDialog(station, self, count=7, is_control=True)
+        dialog.exec_()
 
 
 class QuizWindow(QMainWindow):
@@ -15,16 +124,13 @@ class QuizWindow(QMainWindow):
         self.back_callback = back_callback
 
         self.setWindowTitle("Режим контроля")
-        self.resize(1100, 800)
-
-        stations = load_stations()
-        self.station = random.choice(stations)
-        self.inputs = {}
+        self.resize(900, 800)
 
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
 
+        # Кнопка «Назад»
         top = QHBoxLayout()
         back_btn = QPushButton("← Назад на стартовый экран")
         back_btn.clicked.connect(self.go_back)
@@ -32,95 +138,12 @@ class QuizWindow(QMainWindow):
         top.addStretch()
         layout.addLayout(top)
 
-        title = QLabel(f"<h2>Станция: {self.station['name']}</h2>")
-        layout.addWidget(title)
-
-        # ===== ФОТО — через resource_path =====
-        img = QLabel()
-        img.setAlignment(Qt.AlignCenter)
-        if self.station.get("image"):
-            img_path = resource_path(self.station["image"])
-            pix = QPixmap(img_path)
-            if not pix.isNull():
-                img.setPixmap(pix.scaled(400, 250, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-            else:
-                img.setText("(картинка не найдена)")
-        layout.addWidget(img)
-
-        layout.addWidget(QLabel("Заполните тактико-технические характеристики:"))
-
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        inner = QWidget()
-        inner_layout = QVBoxLayout(inner)
-
-        for spec in self.station["specs"]:
-            row = QHBoxLayout()
-            label = QLabel(f"{spec['name']}:")
-            label.setMinimumWidth(300)
-            row.addWidget(label)
-
-            if spec["type"] == "choice":
-                widget = QComboBox()
-                widget.addItem("")
-                for opt in spec.get("options", []):
-                    widget.addItem(opt)
-            else:
-                widget = QLineEdit()
-                widget.setPlaceholderText("Введите значение...")
-
-            self.inputs[spec["name"]] = (spec, widget)
-            row.addWidget(widget)
-
-            if spec.get("unit"):
-                row.addWidget(QLabel(spec["unit"]))
-
-            inner_layout.addLayout(row)
-
-        scroll.setWidget(inner)
-        layout.addWidget(scroll)
-
-        check_btn = QPushButton("Проверить")
-        check_btn.setStyleSheet("font-size: 16px; padding: 12px;")
-        check_btn.clicked.connect(self.check)
-        layout.addWidget(check_btn)
+        # Вкладки
+        tabs = QTabWidget()
+        tabs.addTab(StationListTab(), "Контроль по станциям")
+        tabs.addTab(RandomStationTab(), "Контроль по всем станциям")
+        layout.addWidget(tabs)
 
     def go_back(self):
         self.back_callback()
         self.close()
-
-    def check(self):
-        total_score = 0.0
-        max_score = 0.0
-        errors = []
-
-        for name, (spec, widget) in self.inputs.items():
-            weight = spec.get("weight", 0.5)
-            max_score += weight
-
-            if isinstance(widget, QComboBox):
-                user_answer = widget.currentText()
-            else:
-                user_answer = widget.text().strip()
-
-            if check_answer(spec, user_answer):
-                total_score += weight
-            else:
-                unit = f" {spec['unit']}" if spec.get("unit") else ""
-                errors.append(
-                    f"• {name} (вес {weight}): «{user_answer or '—'}» "
-                    f"вместо «{spec['answer']}{unit}»"
-                )
-
-        percent = (total_score / max_score * 100) if max_score > 0 else 0
-
-        msg = f"Результат: {total_score:.1f} из {max_score:.1f} баллов ({percent:.1f}%)"
-        if errors:
-            msg += "\n\nОшибки:\n" + "\n".join(errors[:10])
-            if len(errors) > 10:
-                msg += f"\n... и ещё {len(errors) - 10} ошибок."
-        else:
-            msg += "\n\n🎉 Все ответы верны!"
-
-        QMessageBox.information(self, "Результат контроля", msg)
-        self.go_back()
