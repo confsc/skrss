@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QComboBox, QPushButton, QMessageBox
+    QComboBox, QPushButton, QMessageBox, QGridLayout, QWidget
 )
 from PyQt5.QtCore import Qt
 from logic.scoring import check_answer, get_key_specs, get_quiz_specs
@@ -25,28 +25,46 @@ class QuizDialog(QDialog):
             self.specs = get_key_specs(station, count=count)
             self.setWindowTitle(f"Входной контроль: {station['name']}")
 
-        self.inputs = {}        # name → widget
-        self.result_labels = {} # name → QLabel с ✔/✘
-        self.resize(700, 650)
+        self.inputs = {}
+        self.result_labels = {}
+        self.resize(800, 650)
 
-        layout = QVBoxLayout(self)
+        # ==== ГЛАВНЫЙ LAYOUT ====
+        main_layout = QVBoxLayout(self)
 
         title = QLabel(f"<h3>{station['name']}</h3>")
-        layout.addWidget(title)
+        main_layout.addWidget(title)
 
         if is_control:
-            layout.addWidget(QLabel("Ответьте на вопросы (3 ключевых + 4 дополнительных):"))
+            main_layout.addWidget(QLabel("Ответьте на вопросы (3 ключевых + 4 дополнительных):"))
         else:
-            layout.addWidget(QLabel("Заполните характеристики:"))
+            main_layout.addWidget(QLabel("Заполните характеристики:"))
 
-        for spec in self.specs:
-            row = QHBoxLayout()
+        # ==== СЕТКА ВОПРОСОВ ====
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(10)
 
+        # Фиксированные ширины колонок
+        LABEL_WIDTH = 280
+        UNIT_WIDTH = 90
+        RESULT_WIDTH = 30
+
+        # Заголовки колонок (опционально)
+        # grid.addWidget(QLabel("<b>Характеристика</b>"), 0, 0)
+        # grid.addWidget(QLabel("<b>Ответ</b>"), 0, 1)
+        # grid.addWidget(QLabel("<b>Ед.</b>"), 0, 2)
+        # grid.addWidget(QLabel("<b></b>"), 0, 3)
+
+        for row_idx, spec in enumerate(self.specs):
+            # ==== Колонка 1: название ====
             label = QLabel(f"{spec['name']}:")
-            label.setMinimumWidth(260)
             label.setWordWrap(True)
-            row.addWidget(label)
+            label.setFixedWidth(LABEL_WIDTH)
+            label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            grid.addWidget(label, row_idx, 0)
 
+            # ==== Колонка 2: поле ввода ====
             if spec["type"] == "choice":
                 widget = QComboBox()
                 widget.addItem("")
@@ -57,22 +75,32 @@ class QuizDialog(QDialog):
                 widget.setPlaceholderText("Введите значение...")
 
             self.inputs[spec["name"]] = widget
-            row.addWidget(widget)
+            grid.addWidget(widget, row_idx, 1)
 
-            if spec.get("unit"):
-                row.addWidget(QLabel(spec["unit"]))
+            # ==== Колонка 3: единица измерения ====
+            unit_text = spec.get("unit", "")
+            unit_label = QLabel(unit_text if unit_text else "")
+            unit_label.setFixedWidth(UNIT_WIDTH)
+            unit_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            grid.addWidget(unit_label, row_idx, 2)
 
-            # ==== ИНДИКАТОР ✔/✘ ====
+            # ==== Колонка 4: индикатор ✔/✘ ====
             result_lbl = QLabel("")
-            result_lbl.setFixedWidth(30)
+            result_lbl.setFixedWidth(RESULT_WIDTH)
             result_lbl.setAlignment(Qt.AlignCenter)
             self.result_labels[spec["name"]] = result_lbl
-            row.addWidget(result_lbl)
+            grid.addWidget(result_lbl, row_idx, 3)
 
-            layout.addLayout(row)
+        # Пропорции колонок: поле ввода — тянется, остальные фиксированные
+        grid.setColumnStretch(0, 0)   # название — фиксировано
+        grid.setColumnStretch(1, 1)   # поле ввода — растягивается
+        grid.setColumnStretch(2, 0)   # единица — фиксирована
+        grid.setColumnStretch(3, 0)   # индикатор — фиксирован
 
-        layout.addStretch()
+        main_layout.addLayout(grid)
+        main_layout.addStretch()
 
+        # ==== КНОПКИ ====
         btns = QHBoxLayout()
         self.check_btn = QPushButton("Проверить")
         self.check_btn.clicked.connect(self.check)
@@ -80,7 +108,7 @@ class QuizDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btns.addWidget(self.check_btn)
         btns.addWidget(cancel_btn)
-        layout.addLayout(btns)
+        main_layout.addLayout(btns)
 
     def check(self):
         all_correct = True
@@ -109,10 +137,8 @@ class QuizDialog(QDialog):
                 all_correct = False
 
         if self.is_control:
-            # Режим контроля — сразу закрываем с результатом
             self.show_control_result()
         else:
-            # Режим обучения — показываем индикаторы
             if all_correct:
                 QMessageBox.information(
                     self, "Отлично!",
@@ -127,7 +153,6 @@ class QuizDialog(QDialog):
                 )
 
     def show_control_result(self):
-        """Показ итогового окна в режиме контроля."""
         total_score = 0.0
         max_score = 0.0
         errors = []
