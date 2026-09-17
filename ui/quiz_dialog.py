@@ -8,11 +8,6 @@ from ui.result_dialog import ResultDialog
 
 
 class QuizDialog(QDialog):
-    """
-    Диалог контроля.
-    - В обучении: 5 случайных ТТХ, показываем ✔/✘ напротив каждой.
-    - В контроле: 7 ТТХ (3 ключевых + 4 случайных), показываем итог.
-    """
 
     def __init__(self, station, parent=None, count=5, is_control=False):
         super().__init__(parent)
@@ -133,7 +128,6 @@ class QuizDialog(QDialog):
         correct_count = len(self.specs) - len(errors)
         percent = (total_score / max_score * 100) if max_score > 0 else 0
 
-        # ==== КРАСИВОЕ ОКНО РЕЗУЛЬТАТА ====
         dialog = ResultDialog(
             station_name=self.station["name"],
             correct=correct_count,
@@ -144,7 +138,6 @@ class QuizDialog(QDialog):
         )
         dialog.exec_()
 
-        # ==== ЛОГИКА ЗАКРЫТИЯ ====
         if self.is_control:
             self.accept()
         else:
