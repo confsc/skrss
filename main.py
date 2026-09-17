@@ -2,7 +2,7 @@ import sys
 import os
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QIcon
-from ui.start_screen import StartScreen
+from logic.single_instance import check_single_instance
 
 
 def resource_path(relative_path):
@@ -13,6 +13,11 @@ def resource_path(relative_path):
 
 
 def main():
+    # ==== Защита от двойного запуска ====
+    check_single_instance()
+
+    from ui.start_screen import StartScreen
+
     app = QApplication(sys.argv)
 
     # Иконка окна
