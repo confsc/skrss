@@ -57,7 +57,6 @@ def get_quiz_specs(station, total=7, key_count=3):
     else:
         result.extend(key)
 
-
     remaining_pool = [s for s in all_specs if s not in result]
     remaining = total - len(result)
     if remaining > 0 and remaining_pool:
