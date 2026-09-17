@@ -10,6 +10,7 @@ from ui.quiz_dialog import QuizDialog
 
 
 class StationListWidget(QWidget):
+
     def __init__(self, category, parent_window):
         super().__init__()
         self.category = category
@@ -81,7 +82,6 @@ class StationListWidget(QWidget):
 
         self.title_label.setText(station["name"])
 
-        # ===== ФОТО — используем resource_path =====
         if station.get("image"):
             img_path = resource_path(station["image"])
             pix = QPixmap(img_path)
@@ -116,6 +116,7 @@ class StationListWidget(QWidget):
 
 
 class LearningWindow(QMainWindow):
+
     def __init__(self, back_callback):
         super().__init__()
         self.back_callback = back_callback
