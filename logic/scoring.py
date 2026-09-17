@@ -2,7 +2,6 @@ import random
 
 
 def check_answer(spec, user_answer):
-    """Проверяет ответ ученика. True — верно."""
     if not user_answer:
         return False
 
@@ -39,9 +38,6 @@ def check_answer(spec, user_answer):
 
 
 def get_key_specs(station, count=5):
-    """
-    Для ОБУЧЕНИЯ — 5 случайных из ВСЕХ ТТХ.
-    """
     all_specs = list(station["specs"])
     if len(all_specs) <= count:
         result = list(all_specs)
@@ -51,22 +47,17 @@ def get_key_specs(station, count=5):
 
 
 def get_quiz_specs(station, total=7, key_count=3):
-    """
-    Для КОНТРОЛЯ — total вопросов: key_count ключевых + остальные случайные.
-    Если ключевых меньше key_count — добирает случайными.
-    """
     all_specs = list(station["specs"])
     key = [s for s in all_specs if s.get("weight", 0.5) == 1.0]
 
     result = []
 
-    # 1) Ключевые
     if len(key) >= key_count:
         result.extend(random.sample(key, key_count))
     else:
         result.extend(key)
 
-    # 2) Добираем из тех, что ещё не попали
+
     remaining_pool = [s for s in all_specs if s not in result]
     remaining = total - len(result)
     if remaining > 0 and remaining_pool:
