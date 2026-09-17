@@ -11,7 +11,6 @@ from ui.quiz_dialog import QuizDialog
 
 
 class StationListTab(QWidget):
-    """Вкладка «Контроль по станциям» — список всех станций."""
 
     def __init__(self):
         super().__init__()
@@ -26,7 +25,6 @@ class StationListTab(QWidget):
         self.list_widget = QListWidget()
         self.list_widget.itemDoubleClicked.connect(self.start_control)
 
-        # Группируем: сначала радиорелейные, потом спутниковые
         radio = [s for s in self.stations if s["category"] == "radio"]
         satellite = [s for s in self.stations if s["category"] == "satellite"]
 
@@ -70,7 +68,6 @@ class StationListTab(QWidget):
 
 
 class RandomStationTab(QWidget):
-    """Вкладка «Контроль по всем станциям» — случайная станция."""
 
     def __init__(self):
         super().__init__()
@@ -119,6 +116,7 @@ class RandomStationTab(QWidget):
 
 
 class QuizWindow(QMainWindow):
+
     def __init__(self, back_callback):
         super().__init__()
         self.back_callback = back_callback
@@ -130,7 +128,6 @@ class QuizWindow(QMainWindow):
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
 
-        # Кнопка «Назад»
         top = QHBoxLayout()
         back_btn = QPushButton("← Назад на стартовый экран")
         back_btn.clicked.connect(self.go_back)
@@ -138,7 +135,6 @@ class QuizWindow(QMainWindow):
         top.addStretch()
         layout.addLayout(top)
 
-        # Вкладки
         tabs = QTabWidget()
         tabs.addTab(StationListTab(), "Контроль по станциям")
         tabs.addTab(RandomStationTab(), "Контроль по всем станциям")
