@@ -6,7 +6,6 @@ from PyQt5.QtCore import Qt
 
 
 class ResultDialog(QDialog):
-    """Красивое окно результата."""
 
     def __init__(self, station_name, correct, total, percent, errors, is_control=False):
         super().__init__()
@@ -15,7 +14,6 @@ class ResultDialog(QDialog):
 
         self.errors = errors
 
-        # ==== Оценка по проценту ====
         if percent >= 90:
             grade = "ОТЛИЧНО"
             grade_icon = "✔"
@@ -119,7 +117,6 @@ class ResultDialog(QDialog):
 
 
 class ErrorsDialog(QDialog):
-    """Окно со списком ошибок."""
 
     def __init__(self, errors, parent=None):
         super().__init__(parent)
