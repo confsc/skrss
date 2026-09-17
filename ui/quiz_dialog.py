@@ -1,9 +1,10 @@
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QComboBox, QPushButton, QMessageBox, QGridLayout, QWidget
+    QComboBox, QPushButton, QGridLayout
 )
 from PyQt5.QtCore import Qt
 from logic.scoring import check_answer, get_key_specs, get_quiz_specs
+from ui.result_dialog import ResultDialog
 
 
 class QuizDialog(QDialog):
@@ -29,7 +30,6 @@ class QuizDialog(QDialog):
         self.result_labels = {}
         self.resize(800, 650)
 
-        # ==== ГЛАВНЫЙ LAYOUT ====
         main_layout = QVBoxLayout(self)
 
         title = QLabel(f"<h3>{station['name']}</h3>")
@@ -40,31 +40,21 @@ class QuizDialog(QDialog):
         else:
             main_layout.addWidget(QLabel("Заполните характеристики:"))
 
-        # ==== СЕТКА ВОПРОСОВ ====
         grid = QGridLayout()
         grid.setHorizontalSpacing(10)
         grid.setVerticalSpacing(10)
 
-        # Фиксированные ширины колонок
         LABEL_WIDTH = 280
         UNIT_WIDTH = 90
         RESULT_WIDTH = 30
 
-        # Заголовки колонок (опционально)
-        # grid.addWidget(QLabel("<b>Характеристика</b>"), 0, 0)
-        # grid.addWidget(QLabel("<b>Ответ</b>"), 0, 1)
-        # grid.addWidget(QLabel("<b>Ед.</b>"), 0, 2)
-        # grid.addWidget(QLabel("<b></b>"), 0, 3)
-
         for row_idx, spec in enumerate(self.specs):
-            # ==== Колонка 1: название ====
             label = QLabel(f"{spec['name']}:")
             label.setWordWrap(True)
             label.setFixedWidth(LABEL_WIDTH)
             label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             grid.addWidget(label, row_idx, 0)
 
-            # ==== Колонка 2: поле ввода ====
             if spec["type"] == "choice":
                 widget = QComboBox()
                 widget.addItem("")
@@ -77,30 +67,26 @@ class QuizDialog(QDialog):
             self.inputs[spec["name"]] = widget
             grid.addWidget(widget, row_idx, 1)
 
-            # ==== Колонка 3: единица измерения ====
             unit_text = spec.get("unit", "")
             unit_label = QLabel(unit_text if unit_text else "")
             unit_label.setFixedWidth(UNIT_WIDTH)
             unit_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             grid.addWidget(unit_label, row_idx, 2)
 
-            # ==== Колонка 4: индикатор ✔/✘ ====
             result_lbl = QLabel("")
             result_lbl.setFixedWidth(RESULT_WIDTH)
             result_lbl.setAlignment(Qt.AlignCenter)
             self.result_labels[spec["name"]] = result_lbl
             grid.addWidget(result_lbl, row_idx, 3)
 
-        # Пропорции колонок: поле ввода — тянется, остальные фиксированные
-        grid.setColumnStretch(0, 0)   # название — фиксировано
-        grid.setColumnStretch(1, 1)   # поле ввода — растягивается
-        grid.setColumnStretch(2, 0)   # единица — фиксирована
-        grid.setColumnStretch(3, 0)   # индикатор — фиксирован
+        grid.setColumnStretch(0, 0)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(2, 0)
+        grid.setColumnStretch(3, 0)
 
         main_layout.addLayout(grid)
         main_layout.addStretch()
 
-        # ==== КНОПКИ ====
         btns = QHBoxLayout()
         self.check_btn = QPushButton("Проверить")
         self.check_btn.clicked.connect(self.check)
@@ -111,54 +97,13 @@ class QuizDialog(QDialog):
         main_layout.addLayout(btns)
 
     def check(self):
-        all_correct = True
+        errors = []
+        total_score = 0.0
+        max_score = 0.0
 
         for spec in self.specs:
             widget = self.inputs[spec["name"]]
             result_lbl = self.result_labels[spec["name"]]
-
-            if isinstance(widget, QComboBox):
-                user_answer = widget.currentText()
-            else:
-                user_answer = widget.text().strip()
-
-            is_ok = check_answer(spec, user_answer)
-
-            if is_ok:
-                result_lbl.setText("✔")
-                result_lbl.setStyleSheet(
-                    "color: green; font-size: 20px; font-weight: bold;"
-                )
-            else:
-                result_lbl.setText("✘")
-                result_lbl.setStyleSheet(
-                    "color: red; font-size: 20px; font-weight: bold;"
-                )
-                all_correct = False
-
-        if self.is_control:
-            self.show_control_result()
-        else:
-            if all_correct:
-                QMessageBox.information(
-                    self, "Отлично!",
-                    "Все ответы верны! Станция засчитана как изученная."
-                )
-                self.accept()
-            else:
-                QMessageBox.warning(
-                    self, "Есть ошибки",
-                    "Проверьте ответы с красным крестом ✘ и исправьте их.\n"
-                    "Затем нажмите «Проверить» ещё раз."
-                )
-
-    def show_control_result(self):
-        total_score = 0.0
-        max_score = 0.0
-        errors = []
-
-        for spec in self.specs:
-            widget = self.inputs[spec["name"]]
             weight = spec.get("weight", 0.5)
             max_score += weight
 
@@ -169,24 +114,39 @@ class QuizDialog(QDialog):
 
             if check_answer(spec, user_answer):
                 total_score += weight
+                result_lbl.setText("✔")
+                result_lbl.setStyleSheet(
+                    "color: green; font-size: 20px; font-weight: bold;"
+                )
             else:
                 unit = f" {spec['unit']}" if spec.get("unit") else ""
-                errors.append(
-                    f"• {spec['name']}: «{user_answer or '—'}» "
-                    f"вместо «{spec['answer']}{unit}»"
+                errors.append({
+                    "name": spec["name"],
+                    "user": f"{user_answer}{unit}" if user_answer else "",
+                    "correct": f"{spec['answer']}{unit}",
+                })
+                result_lbl.setText("✘")
+                result_lbl.setStyleSheet(
+                    "color: red; font-size: 20px; font-weight: bold;"
                 )
 
-        percent = (total_score / max_score * 100) if max_score > 0 else 0
         correct_count = len(self.specs) - len(errors)
+        percent = (total_score / max_score * 100) if max_score > 0 else 0
 
-        msg = (
-            f"Правильных ответов: {correct_count} из {len(self.specs)}\n"
-            f"Баллы: {total_score:.1f} из {max_score:.1f} ({percent:.1f}%)"
+        # ==== КРАСИВОЕ ОКНО РЕЗУЛЬТАТА ====
+        dialog = ResultDialog(
+            station_name=self.station["name"],
+            correct=correct_count,
+            total=len(self.specs),
+            percent=percent,
+            errors=errors,
+            is_control=self.is_control,
         )
-        if errors:
-            msg += "\n\nОшибки:\n" + "\n".join(errors)
-        else:
-            msg += "\n\n🎉 Все ответы верны!"
+        dialog.exec_()
 
-        QMessageBox.information(self, "Результат контроля", msg)
-        self.accept()
+        # ==== ЛОГИКА ЗАКРЫТИЯ ====
+        if self.is_control:
+            self.accept()
+        else:
+            if not errors:
+                self.accept()
