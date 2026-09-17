@@ -6,21 +6,18 @@ from logic.single_instance import check_single_instance
 
 
 def resource_path(relative_path):
-    """Работает и в .exe, и в исходниках."""
     if hasattr(sys, "_MEIPASS"):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
 
 
 def main():
-    # ==== Защита от двойного запуска ====
     check_single_instance()
 
     from ui.start_screen import StartScreen
 
     app = QApplication(sys.argv)
 
-    # Иконка окна
     icon_path = resource_path("icon.ico")
     if os.path.exists(icon_path):
         app.setWindowIcon(QIcon(icon_path))
