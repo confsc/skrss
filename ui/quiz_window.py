@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QTabWidget, QListWidget, QListWidgetItem,
-    QMessageBox
+    QMessageBox, QSizePolicy
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
@@ -64,6 +64,7 @@ class StationListTab(QWidget):
         layout.addWidget(hint)
 
         self.list_widget = QListWidget()
+        self.list_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.list_widget.setStyleSheet(f"""
             QListWidget {{
                 font-size: 17px;
@@ -171,7 +172,8 @@ class RandomStationTab(QWidget):
         layout.addSpacing(20)
 
         btn = QPushButton("🎲  Начать контроль по случайной станции")
-        btn.setFixedSize(550, 90)
+        btn.setMinimumSize(550, 90)
+        btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         btn.setStyleSheet(f"""
             QPushButton {{
                 font-size: 18px;
@@ -180,6 +182,7 @@ class RandomStationTab(QWidget):
                 color: white;
                 border-radius: 15px;
                 border: none;
+                padding: 15px 30px;
             }}
             QPushButton:hover {{
                 background-color: {ACCENT_HOVER};
@@ -210,6 +213,7 @@ class QuizWindow(QMainWindow):
 
         self.setWindowTitle("Режим контроля")
         self.resize(1200, 850)
+        self.setMinimumSize(800, 600)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         central = QWidget()
@@ -239,8 +243,8 @@ class QuizWindow(QMainWindow):
         top.addStretch()
         layout.addLayout(top)
 
-        tabs = QTabWidget()
-        tabs.setStyleSheet(f"""
+        self.tabs = QTabWidget()
+        self.tabs.setStyleSheet(f"""
             QTabWidget::pane {{
                 border: 2px solid {LIGHT_ACCENT};
                 border-radius: 10px;
@@ -249,10 +253,10 @@ class QuizWindow(QMainWindow):
             QTabBar::tab {{
                 background-color: #E8F5E9;
                 color: {TEXT_COLOR};
-                padding: 14px 30px;
-                font-size: 16px;
+                padding: 20px 35px;
+                font-size: 17px;
                 font-weight: bold;
-                min-width: 250px;
+                min-width: 260px;
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
                 margin-right: 3px;
@@ -265,9 +269,9 @@ class QuizWindow(QMainWindow):
                 background-color: {LIGHT_ACCENT};
             }}
         """)
-        tabs.addTab(StationListTab(), "Контроль по станциям")
-        tabs.addTab(RandomStationTab(), "Контроль по всем станциям")
-        layout.addWidget(tabs)
+        self.tabs.addTab(StationListTab(), "Контроль по станциям")
+        self.tabs.addTab(RandomStationTab(), "Контроль по всем станциям")
+        layout.addWidget(self.tabs)
 
     def go_back(self):
         self.back_callback()
