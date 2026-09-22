@@ -12,13 +12,37 @@ ACCENT_HOVER = "#40916C"
 LIGHT_ACCENT = "#95D5B2"
 BG_COLOR = "#FAFAFA"
 
+SCROLLBAR_STYLE = """
+QScrollBar:vertical {
+    background: #F0F0F0;
+    width: 14px;
+    margin: 0px;
+    border-radius: 7px;
+}
+QScrollBar::handle:vertical {
+    background: #6B8E7B;
+    min-height: 30px;
+    border-radius: 7px;
+    margin: 2px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #4A6B5A;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+"""
+
 
 class ResultDialog(QDialog):
 
     def __init__(self, station_name, correct, total, percent, errors, is_control=False):
         super().__init__()
         self.setWindowTitle("Результат")
-        self.setFixedSize(580, 560)
+        self.setFixedSize(600, 580)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         self.errors = errors
@@ -118,6 +142,7 @@ class ResultDialog(QDialog):
                     font-weight: bold;
                     padding: 0 25px;
                     border-radius: 10px;
+                    border: none;
                 }}
                 QPushButton:hover {{
                     background-color: {ACCENT_HOVER};
@@ -136,6 +161,7 @@ class ResultDialog(QDialog):
                 font-size: 16px;
                 padding: 0 25px;
                 border-radius: 10px;
+                border: none;
             }
             QPushButton:hover {
                 background-color: #616161;
@@ -156,7 +182,7 @@ class ErrorsDialog(QDialog):
     def __init__(self, errors, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Список ошибок")
-        self.resize(750, 600)
+        self.resize(800, 650)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         layout = QVBoxLayout(self)
@@ -172,10 +198,14 @@ class ErrorsDialog(QDialog):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet(
-            f"QScrollArea {{ border: 2px solid {LIGHT_ACCENT}; "
-            f"border-radius: 8px; background-color: white; }}"
-        )
+        scroll.setStyleSheet(f"""
+            QScrollArea {{
+                border: none;
+                background-color: white;
+                border-radius: 8px;
+            }}
+            {SCROLLBAR_STYLE}
+        """)
         inner = QWidget()
         inner.setStyleSheet("background-color: white;")
         inner_layout = QVBoxLayout(inner)
@@ -226,6 +256,7 @@ class ErrorsDialog(QDialog):
                 color: white;
                 font-size: 16px;
                 border-radius: 10px;
+                border: none;
             }
             QPushButton:hover {
                 background-color: #616161;
