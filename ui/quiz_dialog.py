@@ -70,7 +70,7 @@ class QuizDialog(QDialog):
 
         title = QLabel(station["name"])
         title.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 26px; font-weight: bold; padding: 5px;"
+            f"color: {HEADER_COLOR}; font-size: 24px; font-weight: bold; padding: 5px;"
         )
         main_layout.addWidget(title)
 
@@ -79,7 +79,7 @@ class QuizDialog(QDialog):
         else:
             hint = "Заполните характеристики. Для каждой выберите единицу измерения."
         hint_lbl = QLabel(hint)
-        hint_lbl.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 16px; padding: 5px;")
+        hint_lbl.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 14px; padding: 5px;")
         main_layout.addWidget(hint_lbl)
 
         scroll = QScrollArea()
@@ -99,16 +99,16 @@ class QuizDialog(QDialog):
         inner_layout.setContentsMargins(0, 0, 0, 0)
 
         grid = QGridLayout()
-        grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(12)
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(10)
 
-        LABEL_MIN = 280
-        UNIT_MIN = 140
-        RESULT_MIN = 55
+        LABEL_MIN = 260
+        UNIT_MIN = 150
+        RESULT_MIN = 45
 
         HEADER_STYLE = (
             f"color: white; background-color: {HEADER_COLOR}; "
-            f"font-size: 14px; font-weight: bold; padding: 10px 8px; "
+            f"font-size: 13px; font-weight: bold; padding: 10px 8px; "
             f"border-radius: 6px;"
         )
 
@@ -116,27 +116,27 @@ class QuizDialog(QDialog):
         header_name.setStyleSheet(HEADER_STYLE)
         header_name.setAlignment(Qt.AlignCenter)
         header_name.setMinimumWidth(LABEL_MIN)
-        header_name.setMinimumHeight(48)
+        header_name.setMinimumHeight(45)
         grid.addWidget(header_name, 0, 0)
 
         header_val = QLabel("Значение")
         header_val.setStyleSheet(HEADER_STYLE)
         header_val.setAlignment(Qt.AlignCenter)
-        header_val.setMinimumHeight(48)
+        header_val.setMinimumHeight(45)
         grid.addWidget(header_val, 0, 1)
 
-        header_unit = QLabel("Единица")
+        header_unit = QLabel("Единицы измерения")
         header_unit.setStyleSheet(HEADER_STYLE)
         header_unit.setAlignment(Qt.AlignCenter)
         header_unit.setMinimumWidth(UNIT_MIN)
-        header_unit.setMinimumHeight(48)
+        header_unit.setMinimumHeight(45)
         grid.addWidget(header_unit, 0, 2)
 
         for row_idx, spec in enumerate(self.specs, start=1):
             label = QLabel(f"{spec['name']}:")
             label.setWordWrap(True)
             label.setMinimumWidth(LABEL_MIN)
-            label.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 16px; padding: 5px;")
+            label.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 14px; padding: 5px;")
             label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
             grid.addWidget(label, row_idx, 0)
@@ -146,11 +146,11 @@ class QuizDialog(QDialog):
                 widget.addItem("")
                 for opt in spec.get("options", []):
                     widget.addItem(opt)
-                widget.setMinimumHeight(42)
+                widget.setMinimumHeight(40)
                 widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
                 widget.setStyleSheet(f"""
                     QComboBox {{
-                        font-size: 16px;
+                        font-size: 14px;
                         padding: 5px 10px;
                         border: 2px solid {LIGHT_ACCENT};
                         border-radius: 6px;
@@ -170,11 +170,11 @@ class QuizDialog(QDialog):
             else:
                 widget = QLineEdit()
                 widget.setPlaceholderText("Введите значение...")
-                widget.setMinimumHeight(42)
+                widget.setMinimumHeight(40)
                 widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
                 widget.setStyleSheet(f"""
                     QLineEdit {{
-                        font-size: 16px;
+                        font-size: 14px;
                         padding: 5px 10px;
                         border: 2px solid {LIGHT_ACCENT};
                         border-radius: 6px;
@@ -197,11 +197,11 @@ class QuizDialog(QDialog):
                         for opt in unit_options:
                             unit_widget.addItem(opt)
                         unit_widget.setMinimumWidth(UNIT_MIN)
-                        unit_widget.setMinimumHeight(42)
+                        unit_widget.setMinimumHeight(40)
                         unit_widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
                         unit_widget.setStyleSheet(f"""
                             QComboBox {{
-                                font-size: 15px;
+                                font-size: 14px;
                                 padding: 5px 8px;
                                 border: 2px solid {LIGHT_ACCENT};
                                 border-radius: 6px;
@@ -244,11 +244,11 @@ class QuizDialog(QDialog):
         btns.addStretch()
 
         self.check_btn = QPushButton("Проверить")
-        self.check_btn.setMinimumHeight(50)
-        self.check_btn.setMinimumWidth(180)
+        self.check_btn.setMinimumHeight(46)
+        self.check_btn.setMinimumWidth(170)
         self.check_btn.setStyleSheet(f"""
             QPushButton {{
-                font-size: 18px;
+                font-size: 16px;
                 font-weight: bold;
                 background-color: {ACCENT_COLOR};
                 color: white;
@@ -264,11 +264,11 @@ class QuizDialog(QDialog):
         btns.addWidget(self.check_btn)
 
         cancel_btn = QPushButton("Закрыть")
-        cancel_btn.setMinimumHeight(50)
-        cancel_btn.setMinimumWidth(150)
+        cancel_btn.setMinimumHeight(46)
+        cancel_btn.setMinimumWidth(140)
         cancel_btn.setStyleSheet("""
             QPushButton {
-                font-size: 18px;
+                font-size: 16px;
                 background-color: #757575;
                 color: white;
                 border-radius: 10px;
@@ -345,7 +345,7 @@ class QuizDialog(QDialog):
                 total_score += weight
                 result_lbl.setText("✔")
                 result_lbl.setStyleSheet(
-                    "color: #2E7D32; font-size: 26px; font-weight: bold;"
+                    "color: #2E7D32; font-size: 22px; font-weight: bold;"
                 )
             else:
                 unit = spec.get("unit", "").strip()
@@ -365,7 +365,7 @@ class QuizDialog(QDialog):
                 })
                 result_lbl.setText("✘")
                 result_lbl.setStyleSheet(
-                    "color: #C62828; font-size: 26px; font-weight: bold;"
+                    "color: #C62828; font-size: 22px; font-weight: bold;"
                 )
 
         correct_count = len(self.specs) - len(errors)
