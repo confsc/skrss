@@ -10,29 +10,71 @@ from logic.data_loader import load_stations
 from ui.quiz_dialog import QuizDialog
 
 
+HEADER_COLOR = "#1B4332"
+TEXT_COLOR = "#1B1B1B"
+ACCENT_COLOR = "#2D6A4F"
+ACCENT_HOVER = "#40916C"
+LIGHT_ACCENT = "#95D5B2"
+BG_COLOR = "#FAFAFA"
+
+
 class StationListTab(QWidget):
 
     def __init__(self):
         super().__init__()
         self.stations = load_stations()
+        self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
 
-        title = QLabel("<h3>Выберите станцию для контроля</h3>")
+        title = QLabel("Выберите станцию для контроля")
+        title.setStyleSheet(
+            f"color: {HEADER_COLOR}; font-size: 22px; font-weight: bold;"
+        )
         layout.addWidget(title)
-        layout.addWidget(QLabel("Двойной клик по станции — начать контроль (7 вопросов)"))
+
+        hint = QLabel("Двойной клик по станции — начать контроль")
+        hint.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 15px;")
+        layout.addWidget(hint)
 
         self.list_widget = QListWidget()
+        self.list_widget.setStyleSheet(f"""
+            QListWidget {{
+                font-size: 17px;
+                background-color: white;
+                border: 2px solid {LIGHT_ACCENT};
+                border-radius: 10px;
+                padding: 8px;
+                color: {TEXT_COLOR};
+            }}
+            QListWidget::item {{
+                padding: 12px;
+                border-bottom: 1px solid #E0E0E0;
+            }}
+            QListWidget::item:selected {{
+                background-color: {LIGHT_ACCENT};
+                color: {HEADER_COLOR};
+                font-weight: bold;
+                border-radius: 5px;
+            }}
+            QListWidget::item:hover {{
+                background-color: #E8F5E9;
+            }}
+        """)
         self.list_widget.itemDoubleClicked.connect(self.start_control)
 
         radio = [s for s in self.stations if s["category"] == "radio"]
         satellite = [s for s in self.stations if s["category"] == "satellite"]
 
+        f = QFont()
+        f.setBold(True)
+        f.setPointSize(13)
+
         header_radio = QListWidgetItem("── РАДИОРЕЛЕЙНЫЕ СТАНЦИИ ──")
         header_radio.setFlags(Qt.NoItemFlags)
         header_radio.setForeground(Qt.darkGreen)
-        f = QFont()
-        f.setBold(True)
         header_radio.setFont(f)
         self.list_widget.addItem(header_radio)
 
@@ -63,7 +105,7 @@ class StationListTab(QWidget):
         if not station:
             return
 
-        dialog = QuizDialog(station, self, count=7, is_control=True)
+        dialog = QuizDialog(station, self, is_control=True)
         dialog.exec_()
 
 
@@ -72,32 +114,43 @@ class RandomStationTab(QWidget):
     def __init__(self):
         super().__init__()
         self.stations = load_stations()
+        self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignCenter)
+        layout.setSpacing(25)
 
-        title = QLabel("<h2>Контроль по всем станциям</h2>")
+        title = QLabel("Контроль по всем станциям")
         title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet(
+            f"color: {HEADER_COLOR}; font-size: 26px; font-weight: bold;"
+        )
         layout.addWidget(title)
 
         info = QLabel(
-            "Программа выберет случайную станцию из всех 28.\n"
-            "Вам будет предложено 7 вопросов:\n"
-            "3 ключевых + 4 случайных."
+            "Программа выберет случайную станцию из всех доступных.\n"
+            "Количество вопросов зависит от станции (70%, от 7 до 15)."
         )
         info.setAlignment(Qt.AlignCenter)
-        info.setStyleSheet("font-size: 14px; color: #555;")
+        info.setStyleSheet(f"font-size: 16px; color: {TEXT_COLOR}; line-height: 1.6;")
         layout.addWidget(info)
 
-        layout.addSpacing(40)
+        layout.addSpacing(20)
 
-        btn = QPushButton("🎲 Начать контроль по случайной станции")
-        btn.setFixedSize(500, 80)
-        btn.setStyleSheet(
-            "QPushButton { font-size: 16px; background-color: #2196F3; "
-            "color: white; border-radius: 15px; }"
-            "QPushButton:hover { background-color: #1976D2; }"
-        )
+        btn = QPushButton("🎲  Начать контроль по случайной станции")
+        btn.setFixedSize(550, 90)
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                font-size: 18px;
+                font-weight: bold;
+                background-color: {ACCENT_COLOR};
+                color: white;
+                border-radius: 15px;
+            }}
+            QPushButton:hover {{
+                background-color: {ACCENT_HOVER};
+            }}
+        """)
         btn.clicked.connect(self.start_control)
 
         btn_layout = QHBoxLayout()
@@ -111,7 +164,7 @@ class RandomStationTab(QWidget):
             QMessageBox.warning(self, "Ошибка", "Нет станций в базе.")
             return
         station = random.choice(self.stations)
-        dialog = QuizDialog(station, self, count=7, is_control=True)
+        dialog = QuizDialog(station, self, is_control=True)
         dialog.exec_()
 
 
@@ -122,20 +175,60 @@ class QuizWindow(QMainWindow):
         self.back_callback = back_callback
 
         self.setWindowTitle("Режим контроля")
-        self.resize(900, 800)
+        self.resize(1100, 850)
+        self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
 
         top = QHBoxLayout()
         back_btn = QPushButton("← Назад на стартовый экран")
+        back_btn.setMinimumHeight(48)
+        back_btn.setStyleSheet(f"""
+            QPushButton {{
+                font-size: 16px;
+                background-color: {ACCENT_HOVER};
+                color: white;
+                border-radius: 8px;
+                padding: 8px 22px;
+            }}
+            QPushButton:hover {{
+                background-color: {ACCENT_COLOR};
+            }}
+        """)
         back_btn.clicked.connect(self.go_back)
         top.addWidget(back_btn)
         top.addStretch()
         layout.addLayout(top)
 
         tabs = QTabWidget()
+        tabs.setStyleSheet(f"""
+            QTabWidget::pane {{
+                border: 2px solid {LIGHT_ACCENT};
+                border-radius: 10px;
+                background-color: {BG_COLOR};
+            }}
+            QTabBar::tab {{
+                background-color: #E8F5E9;
+                color: {TEXT_COLOR};
+                padding: 14px 35px;
+                font-size: 17px;
+                font-weight: bold;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                margin-right: 3px;
+            }}
+            QTabBar::tab:selected {{
+                background-color: {ACCENT_COLOR};
+                color: white;
+            }}
+            QTabBar::tab:hover {{
+                background-color: {LIGHT_ACCENT};
+            }}
+        """)
         tabs.addTab(StationListTab(), "Контроль по станциям")
         tabs.addTab(RandomStationTab(), "Контроль по всем станциям")
         layout.addWidget(tabs)
