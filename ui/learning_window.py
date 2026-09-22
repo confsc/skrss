@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QListWidget,
     QListWidgetItem, QLabel, QTextEdit, QPushButton, QTabWidget,
-    QSplitter, QMessageBox
+    QSplitter, QMessageBox, QSizePolicy
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QFont
@@ -71,6 +71,7 @@ class StationListWidget(QWidget):
         self.stations = [s for s in load_stations() if s["category"] == category]
         self.studied = parent_window.studied
         self.current_station = None
+        self.current_pixmap = None
 
         self.init_ui()
 
@@ -79,6 +80,7 @@ class StationListWidget(QWidget):
         layout.setContentsMargins(15, 15, 15, 15)
 
         splitter = QSplitter(Qt.Horizontal)
+        splitter.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         left = QWidget()
         left.setStyleSheet(f"background-color: {BG_COLOR};")
@@ -92,6 +94,7 @@ class StationListWidget(QWidget):
         left_layout.addWidget(list_title)
 
         self.list_widget = QListWidget()
+        self.list_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.list_widget.setStyleSheet(f"""
             QListWidget {{
                 font-size: 17px;
@@ -143,14 +146,16 @@ class StationListWidget(QWidget):
 
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignCenter)
-        self.image_label.setMinimumHeight(280)
+        self.image_label.setMinimumHeight(220)
+        self.image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.image_label.setStyleSheet(
             "background-color: transparent; border: none;"
         )
-        right_layout.addWidget(self.image_label)
+        right_layout.addWidget(self.image_label, 3)
 
         self.info_text = QTextEdit()
         self.info_text.setReadOnly(True)
+        self.info_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.info_text.setStyleSheet(f"""
             QTextEdit {{
                 font-size: 16px;
@@ -162,11 +167,12 @@ class StationListWidget(QWidget):
             }}
             {SCROLLBAR_STYLE}
         """)
-        right_layout.addWidget(self.info_text)
+        right_layout.addWidget(self.info_text, 4)
 
         self.study_button = QPushButton("Пройти входной контроль")
         self.study_button.setEnabled(False)
         self.study_button.setMinimumHeight(55)
+        self.study_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.study_button.setStyleSheet(f"""
             QPushButton {{
                 font-size: 19px;
@@ -190,7 +196,8 @@ class StationListWidget(QWidget):
 
         splitter.addWidget(left)
         splitter.addWidget(right)
-        splitter.setSizes([380, 1000])
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 3)
 
         layout.addWidget(splitter)
 
@@ -210,19 +217,22 @@ class StationListWidget(QWidget):
 
         self.title_label.setText(station["name"])
 
+        self.current_pixmap = None
+
         if station.get("image"):
             img_path = resource_path(station["image"])
             pix = QPixmap(img_path)
             if not pix.isNull():
-                self.image_label.setPixmap(
-                    pix.scaled(700, 280, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                )
+                self.current_pixmap = pix
+                self.update_image()
             else:
+                self.image_label.clear()
                 self.image_label.setText(f"(картинка не найдена: {station['image']})")
                 self.image_label.setStyleSheet(
                     "color: #C62828; font-size: 15px; padding: 10px; border: none;"
                 )
         else:
+            self.image_label.clear()
             self.image_label.setText("(картинка отсутствует)")
             self.image_label.setStyleSheet(
                 "color: #777; font-size: 15px; padding: 10px; border: none;"
@@ -289,6 +299,21 @@ class StationListWidget(QWidget):
         self.info_text.setHtml(html)
         self.study_button.setEnabled(True)
 
+    def update_image(self):
+        if not self.current_pixmap:
+            return
+        w = max(200, self.image_label.width() - 20)
+        h = max(150, self.image_label.height() - 20)
+        self.image_label.setPixmap(
+            self.current_pixmap.scaled(
+                w, h, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
+        )
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.update_image()
+
     def start_quiz(self):
         dialog = QuizDialog(self.current_station, self)
         if dialog.exec_() == QuizDialog.Accepted:
@@ -309,6 +334,7 @@ class LearningWindow(QMainWindow):
 
         self.setWindowTitle("Режим обучения")
         self.resize(1400, 850)
+        self.setMinimumSize(900, 600)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         central = QWidget()
@@ -337,8 +363,8 @@ class LearningWindow(QMainWindow):
         top.addStretch()
         layout.addLayout(top)
 
-        tabs = QTabWidget()
-        tabs.setStyleSheet(f"""
+        self.tabs = QTabWidget()
+        self.tabs.setStyleSheet(f"""
             QTabWidget::pane {{
                 border: 2px solid {LIGHT_ACCENT};
                 border-radius: 8px;
@@ -347,10 +373,10 @@ class LearningWindow(QMainWindow):
             QTabBar::tab {{
                 background-color: #E8F5E9;
                 color: {TEXT_COLOR};
-                padding: 14px 25px;
-                font-size: 16px;
+                padding: 20px 35px;
+                font-size: 17px;
                 font-weight: bold;
-                min-width: 200px;
+                min-width: 220px;
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
                 margin-right: 3px;
@@ -363,9 +389,9 @@ class LearningWindow(QMainWindow):
                 background-color: {LIGHT_ACCENT};
             }}
         """)
-        tabs.addTab(StationListWidget("radio", self), "Радиорелейные станции")
-        tabs.addTab(StationListWidget("satellite", self), "Спутниковые станции")
-        layout.addWidget(tabs)
+        self.tabs.addTab(StationListWidget("radio", self), "Радиорелейные станции")
+        self.tabs.addTab(StationListWidget("satellite", self), "Спутниковые станции")
+        layout.addWidget(self.tabs)
 
     def go_back(self):
         self.back_callback()
