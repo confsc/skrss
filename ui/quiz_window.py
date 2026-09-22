@@ -17,6 +17,30 @@ ACCENT_HOVER = "#40916C"
 LIGHT_ACCENT = "#95D5B2"
 BG_COLOR = "#FAFAFA"
 
+SCROLLBAR_STYLE = """
+QScrollBar:vertical {
+    background: #F0F0F0;
+    width: 14px;
+    margin: 0px;
+    border-radius: 7px;
+}
+QScrollBar::handle:vertical {
+    background: #6B8E7B;
+    min-height: 30px;
+    border-radius: 7px;
+    margin: 2px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #4A6B5A;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+"""
+
 
 class StationListTab(QWidget):
 
@@ -27,7 +51,7 @@ class StationListTab(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        layout.setSpacing(12)
 
         title = QLabel("Выберите станцию для контроля")
         title.setStyleSheet(
@@ -48,20 +72,29 @@ class StationListTab(QWidget):
                 border-radius: 10px;
                 padding: 8px;
                 color: {TEXT_COLOR};
+                outline: none;
             }}
             QListWidget::item {{
                 padding: 12px;
                 border-bottom: 1px solid #E0E0E0;
+                outline: none;
             }}
             QListWidget::item:selected {{
                 background-color: {LIGHT_ACCENT};
                 color: {HEADER_COLOR};
                 font-weight: bold;
                 border-radius: 5px;
+                border: none;
+                outline: none;
+            }}
+            QListWidget::item:focus {{
+                border: none;
+                outline: none;
             }}
             QListWidget::item:hover {{
                 background-color: #E8F5E9;
             }}
+            {SCROLLBAR_STYLE}
         """)
         self.list_widget.itemDoubleClicked.connect(self.start_control)
 
@@ -146,6 +179,7 @@ class RandomStationTab(QWidget):
                 background-color: {ACCENT_COLOR};
                 color: white;
                 border-radius: 15px;
+                border: none;
             }}
             QPushButton:hover {{
                 background-color: {ACCENT_HOVER};
@@ -175,7 +209,7 @@ class QuizWindow(QMainWindow):
         self.back_callback = back_callback
 
         self.setWindowTitle("Режим контроля")
-        self.resize(1100, 850)
+        self.resize(1200, 850)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         central = QWidget()
@@ -194,6 +228,7 @@ class QuizWindow(QMainWindow):
                 color: white;
                 border-radius: 8px;
                 padding: 8px 22px;
+                border: none;
             }}
             QPushButton:hover {{
                 background-color: {ACCENT_COLOR};
@@ -214,9 +249,10 @@ class QuizWindow(QMainWindow):
             QTabBar::tab {{
                 background-color: #E8F5E9;
                 color: {TEXT_COLOR};
-                padding: 14px 35px;
-                font-size: 17px;
+                padding: 14px 30px;
+                font-size: 16px;
                 font-weight: bold;
+                min-width: 250px;
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
                 margin-right: 3px;
