@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QComboBox, QPushButton, QGridLayout, QScrollArea, QWidget
+    QComboBox, QPushButton, QGridLayout, QScrollArea, QWidget,
+    QSizePolicy
 )
 from PyQt5.QtCore import Qt
 from logic.scoring import check_answer, get_key_specs, get_quiz_specs, get_unit_options
@@ -59,7 +60,8 @@ class QuizDialog(QDialog):
         self.inputs = {}
         self.unit_inputs = {}
         self.result_labels = {}
-        self.resize(1050, 800)
+        self.resize(1100, 800)
+        self.setMinimumSize(800, 500)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         main_layout = QVBoxLayout(self)
@@ -82,6 +84,7 @@ class QuizDialog(QDialog):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         scroll.setStyleSheet(f"""
             QScrollArea {{
                 border: none;
@@ -99,47 +102,48 @@ class QuizDialog(QDialog):
         grid.setHorizontalSpacing(12)
         grid.setVerticalSpacing(12)
 
-        LABEL_WIDTH = 340
-        UNIT_WIDTH = 160
-        RESULT_WIDTH = 60
+        LABEL_MIN = 280
+        UNIT_MIN = 140
+        RESULT_MIN = 55
 
         header_name = QLabel("Характеристика")
         header_name.setStyleSheet(
             f"color: white; background-color: {HEADER_COLOR}; "
-            f"font-size: 16px; font-weight: bold; padding: 10px; border-radius: 6px;"
+            f"font-size: 16px; font-weight: bold; padding: 12px; border-radius: 6px;"
         )
-        header_name.setFixedWidth(LABEL_WIDTH)
+        header_name.setMinimumWidth(LABEL_MIN)
         grid.addWidget(header_name, 0, 0)
 
         header_val = QLabel("Значение")
         header_val.setStyleSheet(
             f"color: white; background-color: {HEADER_COLOR}; "
-            f"font-size: 16px; font-weight: bold; padding: 10px; border-radius: 6px;"
+            f"font-size: 16px; font-weight: bold; padding: 12px; border-radius: 6px;"
         )
         grid.addWidget(header_val, 0, 1)
 
         header_unit = QLabel("Единица")
         header_unit.setStyleSheet(
             f"color: white; background-color: {HEADER_COLOR}; "
-            f"font-size: 16px; font-weight: bold; padding: 10px; border-radius: 6px;"
+            f"font-size: 16px; font-weight: bold; padding: 12px; border-radius: 6px;"
         )
-        header_unit.setFixedWidth(UNIT_WIDTH)
+        header_unit.setMinimumWidth(UNIT_MIN)
         grid.addWidget(header_unit, 0, 2)
 
         header_res = QLabel("")
         header_res.setStyleSheet(
             f"color: white; background-color: {HEADER_COLOR}; "
-            f"font-size: 16px; font-weight: bold; padding: 10px; border-radius: 6px;"
+            f"font-size: 16px; font-weight: bold; padding: 12px; border-radius: 6px;"
         )
-        header_res.setFixedWidth(RESULT_WIDTH)
+        header_res.setMinimumWidth(RESULT_MIN)
         grid.addWidget(header_res, 0, 3)
 
         for row_idx, spec in enumerate(self.specs, start=1):
             label = QLabel(f"{spec['name']}:")
             label.setWordWrap(True)
-            label.setFixedWidth(LABEL_WIDTH)
+            label.setMinimumWidth(LABEL_MIN)
             label.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 16px; padding: 5px;")
             label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
             grid.addWidget(label, row_idx, 0)
 
             if spec["type"] == "choice":
@@ -148,6 +152,7 @@ class QuizDialog(QDialog):
                 for opt in spec.get("options", []):
                     widget.addItem(opt)
                 widget.setMinimumHeight(42)
+                widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
                 widget.setStyleSheet(f"""
                     QComboBox {{
                         font-size: 16px;
@@ -165,12 +170,13 @@ class QuizDialog(QDialog):
                 grid.addWidget(widget, row_idx, 1)
 
                 empty_unit = QLabel("")
-                empty_unit.setFixedWidth(UNIT_WIDTH)
+                empty_unit.setMinimumWidth(UNIT_MIN)
                 grid.addWidget(empty_unit, row_idx, 2)
             else:
                 widget = QLineEdit()
                 widget.setPlaceholderText("Введите значение...")
                 widget.setMinimumHeight(42)
+                widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
                 widget.setStyleSheet(f"""
                     QLineEdit {{
                         font-size: 16px;
@@ -195,8 +201,9 @@ class QuizDialog(QDialog):
                         unit_widget.addItem("")
                         for opt in unit_options:
                             unit_widget.addItem(opt)
-                        unit_widget.setFixedWidth(UNIT_WIDTH)
+                        unit_widget.setMinimumWidth(UNIT_MIN)
                         unit_widget.setMinimumHeight(42)
+                        unit_widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
                         unit_widget.setStyleSheet(f"""
                             QComboBox {{
                                 font-size: 15px;
@@ -214,21 +221,21 @@ class QuizDialog(QDialog):
                         grid.addWidget(unit_widget, row_idx, 2)
                     else:
                         empty_unit = QLabel("")
-                        empty_unit.setFixedWidth(UNIT_WIDTH)
+                        empty_unit.setMinimumWidth(UNIT_MIN)
                         grid.addWidget(empty_unit, row_idx, 2)
                 else:
                     empty_unit = QLabel("")
-                    empty_unit.setFixedWidth(UNIT_WIDTH)
+                    empty_unit.setMinimumWidth(UNIT_MIN)
                     grid.addWidget(empty_unit, row_idx, 2)
 
             result_lbl = QLabel("")
-            result_lbl.setFixedWidth(RESULT_WIDTH)
+            result_lbl.setMinimumWidth(RESULT_MIN)
             result_lbl.setAlignment(Qt.AlignCenter)
             self.result_labels[spec["name"]] = result_lbl
             grid.addWidget(result_lbl, row_idx, 3)
 
         grid.setColumnStretch(0, 0)
-        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(1, 5)
         grid.setColumnStretch(2, 0)
         grid.setColumnStretch(3, 0)
 
