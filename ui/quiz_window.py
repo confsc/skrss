@@ -212,8 +212,8 @@ class QuizWindow(QMainWindow):
         self.back_callback = back_callback
 
         self.setWindowTitle("Режим контроля")
-        self.resize(1200, 850)
-        self.setMinimumSize(800, 600)
+        self.resize(1250, 850)
+        self.setMinimumSize(900, 600)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         central = QWidget()
@@ -253,10 +253,10 @@ class QuizWindow(QMainWindow):
             QTabBar::tab {{
                 background-color: #E8F5E9;
                 color: {TEXT_COLOR};
-                padding: 20px 35px;
-                font-size: 17px;
+                padding: 20px 30px;
+                font-size: 15px;
                 font-weight: bold;
-                min-width: 260px;
+                min-width: 280px;
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
                 margin-right: 3px;
