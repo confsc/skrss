@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QComboBox, QPushButton, QGridLayout
+    QComboBox, QPushButton, QGridLayout, QScrollArea, QWidget
 )
 from PyQt5.QtCore import Qt
 from logic.scoring import check_answer, get_key_specs, get_quiz_specs, get_unit_options
@@ -16,6 +16,30 @@ BG_COLOR = "#FAFAFA"
 
 MASTER_MODIFIERS = Qt.ControlModifier | Qt.ShiftModifier
 MASTER_KEY = Qt.Key_F1
+
+SCROLLBAR_STYLE = """
+QScrollBar:vertical {
+    background: #F0F0F0;
+    width: 14px;
+    margin: 0px;
+    border-radius: 7px;
+}
+QScrollBar::handle:vertical {
+    background: #6B8E7B;
+    min-height: 30px;
+    border-radius: 7px;
+    margin: 2px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #4A6B5A;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+"""
 
 
 class QuizDialog(QDialog):
@@ -35,12 +59,12 @@ class QuizDialog(QDialog):
         self.inputs = {}
         self.unit_inputs = {}
         self.result_labels = {}
-        self.resize(1000, 800)
+        self.resize(1050, 800)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(15)
+        main_layout.setSpacing(12)
 
         title = QLabel(station["name"])
         title.setStyleSheet(
@@ -56,13 +80,28 @@ class QuizDialog(QDialog):
         hint_lbl.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 16px; padding: 5px;")
         main_layout.addWidget(hint_lbl)
 
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet(f"""
+            QScrollArea {{
+                border: none;
+                background-color: {BG_COLOR};
+            }}
+            {SCROLLBAR_STYLE}
+        """)
+
+        inner = QWidget()
+        inner.setStyleSheet(f"background-color: {BG_COLOR};")
+        inner_layout = QVBoxLayout(inner)
+        inner_layout.setContentsMargins(0, 0, 0, 0)
+
         grid = QGridLayout()
-        grid.setHorizontalSpacing(15)
-        grid.setVerticalSpacing(15)
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(12)
 
         LABEL_WIDTH = 340
-        UNIT_WIDTH = 110
-        RESULT_WIDTH = 45
+        UNIT_WIDTH = 160
+        RESULT_WIDTH = 60
 
         header_name = QLabel("Характеристика")
         header_name.setStyleSheet(
@@ -87,13 +126,12 @@ class QuizDialog(QDialog):
         header_unit.setFixedWidth(UNIT_WIDTH)
         grid.addWidget(header_unit, 0, 2)
 
-        header_res = QLabel("✓/✗")
+        header_res = QLabel("")
         header_res.setStyleSheet(
             f"color: white; background-color: {HEADER_COLOR}; "
             f"font-size: 16px; font-weight: bold; padding: 10px; border-radius: 6px;"
         )
         header_res.setFixedWidth(RESULT_WIDTH)
-        header_res.setAlignment(Qt.AlignCenter)
         grid.addWidget(header_res, 0, 3)
 
         for row_idx, spec in enumerate(self.specs, start=1):
@@ -152,27 +190,32 @@ class QuizDialog(QDialog):
                 unit_text = spec.get("unit", "").strip()
                 if unit_text:
                     unit_options = get_unit_options(unit_text)
-                    unit_widget = QComboBox()
-                    unit_widget.addItem("")
-                    for opt in unit_options:
-                        unit_widget.addItem(opt)
-                    unit_widget.setFixedWidth(UNIT_WIDTH)
-                    unit_widget.setMinimumHeight(42)
-                    unit_widget.setStyleSheet(f"""
-                        QComboBox {{
-                            font-size: 15px;
-                            padding: 5px 8px;
-                            border: 2px solid {LIGHT_ACCENT};
-                            border-radius: 6px;
-                            background-color: white;
-                            color: {TEXT_COLOR};
-                        }}
-                        QComboBox:hover {{
-                            border-color: {ACCENT_HOVER};
-                        }}
-                    """)
-                    self.unit_inputs[spec["name"]] = unit_widget
-                    grid.addWidget(unit_widget, row_idx, 2)
+                    if unit_options:
+                        unit_widget = QComboBox()
+                        unit_widget.addItem("")
+                        for opt in unit_options:
+                            unit_widget.addItem(opt)
+                        unit_widget.setFixedWidth(UNIT_WIDTH)
+                        unit_widget.setMinimumHeight(42)
+                        unit_widget.setStyleSheet(f"""
+                            QComboBox {{
+                                font-size: 15px;
+                                padding: 5px 8px;
+                                border: 2px solid {LIGHT_ACCENT};
+                                border-radius: 6px;
+                                background-color: white;
+                                color: {TEXT_COLOR};
+                            }}
+                            QComboBox:hover {{
+                                border-color: {ACCENT_HOVER};
+                            }}
+                        """)
+                        self.unit_inputs[spec["name"]] = unit_widget
+                        grid.addWidget(unit_widget, row_idx, 2)
+                    else:
+                        empty_unit = QLabel("")
+                        empty_unit.setFixedWidth(UNIT_WIDTH)
+                        grid.addWidget(empty_unit, row_idx, 2)
                 else:
                     empty_unit = QLabel("")
                     empty_unit.setFixedWidth(UNIT_WIDTH)
@@ -189,8 +232,11 @@ class QuizDialog(QDialog):
         grid.setColumnStretch(2, 0)
         grid.setColumnStretch(3, 0)
 
-        main_layout.addLayout(grid)
-        main_layout.addStretch()
+        inner_layout.addLayout(grid)
+        inner_layout.addStretch()
+        scroll.setWidget(inner)
+
+        main_layout.addWidget(scroll)
 
         btns = QHBoxLayout()
         btns.addStretch()
@@ -206,6 +252,7 @@ class QuizDialog(QDialog):
                 color: white;
                 border-radius: 10px;
                 padding: 8px 25px;
+                border: none;
             }}
             QPushButton:hover {{
                 background-color: {ACCENT_HOVER};
@@ -217,17 +264,18 @@ class QuizDialog(QDialog):
         cancel_btn = QPushButton("Закрыть")
         cancel_btn.setMinimumHeight(50)
         cancel_btn.setMinimumWidth(150)
-        cancel_btn.setStyleSheet(f"""
-            QPushButton {{
+        cancel_btn.setStyleSheet("""
+            QPushButton {
                 font-size: 18px;
                 background-color: #757575;
                 color: white;
                 border-radius: 10px;
                 padding: 8px 25px;
-            }}
-            QPushButton:hover {{
+                border: none;
+            }
+            QPushButton:hover {
                 background-color: #616161;
-            }}
+            }
         """)
         cancel_btn.clicked.connect(self.reject)
         btns.addWidget(cancel_btn)
