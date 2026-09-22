@@ -60,8 +60,8 @@ class QuizDialog(QDialog):
         self.inputs = {}
         self.unit_inputs = {}
         self.result_labels = {}
-        self.resize(1100, 800)
-        self.setMinimumSize(800, 500)
+        self.resize(1150, 800)
+        self.setMinimumSize(900, 500)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         main_layout = QVBoxLayout(self)
@@ -106,36 +106,31 @@ class QuizDialog(QDialog):
         UNIT_MIN = 140
         RESULT_MIN = 55
 
-        header_name = QLabel("Характеристика")
-        header_name.setStyleSheet(
+        HEADER_STYLE = (
             f"color: white; background-color: {HEADER_COLOR}; "
-            f"font-size: 16px; font-weight: bold; padding: 12px; border-radius: 6px;"
+            f"font-size: 14px; font-weight: bold; padding: 10px 8px; "
+            f"border-radius: 6px;"
         )
+
+        header_name = QLabel("Характеристика")
+        header_name.setStyleSheet(HEADER_STYLE)
+        header_name.setAlignment(Qt.AlignCenter)
         header_name.setMinimumWidth(LABEL_MIN)
+        header_name.setMinimumHeight(48)
         grid.addWidget(header_name, 0, 0)
 
         header_val = QLabel("Значение")
-        header_val.setStyleSheet(
-            f"color: white; background-color: {HEADER_COLOR}; "
-            f"font-size: 16px; font-weight: bold; padding: 12px; border-radius: 6px;"
-        )
+        header_val.setStyleSheet(HEADER_STYLE)
+        header_val.setAlignment(Qt.AlignCenter)
+        header_val.setMinimumHeight(48)
         grid.addWidget(header_val, 0, 1)
 
         header_unit = QLabel("Единица")
-        header_unit.setStyleSheet(
-            f"color: white; background-color: {HEADER_COLOR}; "
-            f"font-size: 16px; font-weight: bold; padding: 12px; border-radius: 6px;"
-        )
+        header_unit.setStyleSheet(HEADER_STYLE)
+        header_unit.setAlignment(Qt.AlignCenter)
         header_unit.setMinimumWidth(UNIT_MIN)
+        header_unit.setMinimumHeight(48)
         grid.addWidget(header_unit, 0, 2)
-
-        header_res = QLabel("")
-        header_res.setStyleSheet(
-            f"color: white; background-color: {HEADER_COLOR}; "
-            f"font-size: 16px; font-weight: bold; padding: 12px; border-radius: 6px;"
-        )
-        header_res.setMinimumWidth(RESULT_MIN)
-        grid.addWidget(header_res, 0, 3)
 
         for row_idx, spec in enumerate(self.specs, start=1):
             label = QLabel(f"{spec['name']}:")
