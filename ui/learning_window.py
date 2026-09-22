@@ -89,7 +89,7 @@ class StationListWidget(QWidget):
 
         list_title = QLabel("Выберите станцию:")
         list_title.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 19px; font-weight: bold; padding: 5px;"
+            f"color: {HEADER_COLOR}; font-size: 18px; font-weight: bold; padding: 5px;"
         )
         left_layout.addWidget(list_title)
 
@@ -97,7 +97,7 @@ class StationListWidget(QWidget):
         self.list_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.list_widget.setStyleSheet(f"""
             QListWidget {{
-                font-size: 17px;
+                font-size: 16px;
                 background-color: white;
                 border: 2px solid {LIGHT_ACCENT};
                 border-radius: 8px;
@@ -106,7 +106,7 @@ class StationListWidget(QWidget):
                 outline: none;
             }}
             QListWidget::item {{
-                padding: 12px;
+                padding: 10px 12px;
                 border-bottom: 1px solid #E0E0E0;
                 outline: none;
             }}
@@ -136,11 +136,11 @@ class StationListWidget(QWidget):
         right.setStyleSheet(f"background-color: {BG_COLOR};")
         right_layout = QVBoxLayout(right)
         right_layout.setContentsMargins(10, 10, 10, 10)
-        right_layout.setSpacing(12)
+        right_layout.setSpacing(10)
 
         self.title_label = QLabel("Выберите станцию слева")
         self.title_label.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 24px; font-weight: bold; padding: 8px;"
+            f"color: {HEADER_COLOR}; font-size: 22px; font-weight: bold; padding: 8px;"
         )
         right_layout.addWidget(self.title_label)
 
@@ -158,7 +158,7 @@ class StationListWidget(QWidget):
         self.info_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.info_text.setStyleSheet(f"""
             QTextEdit {{
-                font-size: 16px;
+                font-size: 15px;
                 background-color: white;
                 border: none;
                 border-radius: 8px;
@@ -171,11 +171,11 @@ class StationListWidget(QWidget):
 
         self.study_button = QPushButton("Пройти входной контроль")
         self.study_button.setEnabled(False)
-        self.study_button.setMinimumHeight(55)
+        self.study_button.setMinimumHeight(50)
         self.study_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.study_button.setStyleSheet(f"""
             QPushButton {{
-                font-size: 19px;
+                font-size: 17px;
                 font-weight: bold;
                 background-color: {ACCENT_COLOR};
                 color: white;
@@ -244,7 +244,7 @@ class StationListWidget(QWidget):
         <style>
             h3 {{
                 color: {HEADER_COLOR};
-                font-size: 20px;
+                font-size: 18px;
                 margin-top: 10px;
                 margin-bottom: 8px;
                 border-bottom: 2px solid {LIGHT_ACCENT};
@@ -252,7 +252,7 @@ class StationListWidget(QWidget):
             }}
             p {{
                 color: {TEXT_COLOR};
-                font-size: 16px;
+                font-size: 15px;
                 line-height: 1.5;
                 margin: 5px 0;
             }}
@@ -260,14 +260,14 @@ class StationListWidget(QWidget):
                 width: 100%;
                 border-collapse: collapse;
                 margin-top: 10px;
-                font-size: 15px;
+                font-size: 14px;
             }}
             th {{
                 background-color: {HEADER_COLOR};
                 color: white;
                 padding: 10px;
                 text-align: left;
-                font-size: 16px;
+                font-size: 14px;
             }}
             td {{
                 padding: 10px;
@@ -341,13 +341,14 @@ class LearningWindow(QMainWindow):
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
         layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(12)
 
         top = QHBoxLayout()
         back_btn = QPushButton("← Назад на стартовый экран")
-        back_btn.setMinimumHeight(45)
+        back_btn.setMinimumHeight(44)
         back_btn.setStyleSheet(f"""
             QPushButton {{
-                font-size: 16px;
+                font-size: 15px;
                 background-color: {ACCENT_HOVER};
                 color: white;
                 border-radius: 8px;
@@ -369,17 +370,23 @@ class LearningWindow(QMainWindow):
                 border: 2px solid {LIGHT_ACCENT};
                 border-radius: 8px;
                 background-color: {BG_COLOR};
+                top: -1px;
+            }}
+            QTabBar {{
+                background-color: transparent;
             }}
             QTabBar::tab {{
                 background-color: #E8F5E9;
                 color: {TEXT_COLOR};
-                padding: 20px 35px;
-                font-size: 17px;
+                padding: 12px 28px;
+                font-size: 15px;
                 font-weight: bold;
                 min-width: 220px;
+                min-height: 22px;
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
                 margin-right: 3px;
+                margin-top: 0px;
             }}
             QTabBar::tab:selected {{
                 background-color: {ACCENT_COLOR};
