@@ -55,19 +55,19 @@ class StationListTab(QWidget):
 
         title = QLabel("Выберите станцию для контроля")
         title.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 22px; font-weight: bold;"
+            f"color: {HEADER_COLOR}; font-size: 20px; font-weight: bold;"
         )
         layout.addWidget(title)
 
         hint = QLabel("Двойной клик по станции — начать контроль")
-        hint.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 15px;")
+        hint.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 14px;")
         layout.addWidget(hint)
 
         self.list_widget = QListWidget()
         self.list_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.list_widget.setStyleSheet(f"""
             QListWidget {{
-                font-size: 17px;
+                font-size: 16px;
                 background-color: white;
                 border: 2px solid {LIGHT_ACCENT};
                 border-radius: 10px;
@@ -76,7 +76,7 @@ class StationListTab(QWidget):
                 outline: none;
             }}
             QListWidget::item {{
-                padding: 12px;
+                padding: 10px 12px;
                 border-bottom: 1px solid #E0E0E0;
                 outline: none;
             }}
@@ -104,7 +104,7 @@ class StationListTab(QWidget):
 
         f = QFont()
         f.setBold(True)
-        f.setPointSize(13)
+        f.setPointSize(12)
 
         header_radio = QListWidgetItem("── РАДИОРЕЛЕЙНЫЕ СТАНЦИИ ──")
         header_radio.setFlags(Qt.NoItemFlags)
@@ -152,12 +152,12 @@ class RandomStationTab(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignCenter)
-        layout.setSpacing(25)
+        layout.setSpacing(20)
 
         title = QLabel("Контроль по всем станциям")
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 26px; font-weight: bold;"
+            f"color: {HEADER_COLOR}; font-size: 24px; font-weight: bold;"
         )
         layout.addWidget(title)
 
@@ -166,23 +166,23 @@ class RandomStationTab(QWidget):
             "Количество вопросов зависит от станции (70%, от 7 до 15)."
         )
         info.setAlignment(Qt.AlignCenter)
-        info.setStyleSheet(f"font-size: 16px; color: {TEXT_COLOR}; line-height: 1.6;")
+        info.setStyleSheet(f"font-size: 15px; color: {TEXT_COLOR}; line-height: 1.6;")
         layout.addWidget(info)
 
         layout.addSpacing(20)
 
         btn = QPushButton("🎲  Начать контроль по случайной станции")
-        btn.setMinimumSize(550, 90)
+        btn.setMinimumSize(520, 80)
         btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         btn.setStyleSheet(f"""
             QPushButton {{
-                font-size: 18px;
+                font-size: 17px;
                 font-weight: bold;
                 background-color: {ACCENT_COLOR};
                 color: white;
                 border-radius: 15px;
                 border: none;
-                padding: 15px 30px;
+                padding: 12px 25px;
             }}
             QPushButton:hover {{
                 background-color: {ACCENT_HOVER};
@@ -224,14 +224,14 @@ class QuizWindow(QMainWindow):
 
         top = QHBoxLayout()
         back_btn = QPushButton("← Назад на стартовый экран")
-        back_btn.setMinimumHeight(48)
+        back_btn.setMinimumHeight(44)
         back_btn.setStyleSheet(f"""
             QPushButton {{
-                font-size: 16px;
+                font-size: 15px;
                 background-color: {ACCENT_HOVER};
                 color: white;
                 border-radius: 8px;
-                padding: 8px 22px;
+                padding: 8px 20px;
                 border: none;
             }}
             QPushButton:hover {{
@@ -249,17 +249,23 @@ class QuizWindow(QMainWindow):
                 border: 2px solid {LIGHT_ACCENT};
                 border-radius: 10px;
                 background-color: {BG_COLOR};
+                top: -1px;
+            }}
+            QTabBar {{
+                background-color: transparent;
             }}
             QTabBar::tab {{
                 background-color: #E8F5E9;
                 color: {TEXT_COLOR};
-                padding: 20px 30px;
+                padding: 12px 28px;
                 font-size: 15px;
                 font-weight: bold;
-                min-width: 280px;
+                min-width: 260px;
+                min-height: 22px;
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
                 margin-right: 3px;
+                margin-top: 0px;
             }}
             QTabBar::tab:selected {{
                 background-color: {ACCENT_COLOR};
