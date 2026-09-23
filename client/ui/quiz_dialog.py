@@ -17,28 +17,20 @@ BG_COLOR = "#FAFAFA"
 DANGER_COLOR = "#991B1B"
 WARN_COLOR = "#B45309"
 
+HEARTBEAT_INTERVAL = 30
+
 SCROLLBAR_STYLE = """
 QScrollBar:vertical {
-    background: #F0F0F0;
-    width: 14px;
-    margin: 0px;
+    background: #F0F0F0; width: 14px; margin: 0px;
     border-radius: 7px;
 }
 QScrollBar::handle:vertical {
-    background: #6B8E7B;
-    min-height: 30px;
-    border-radius: 7px;
-    margin: 2px;
+    background: #6B8E7B; min-height: 30px;
+    border-radius: 7px; margin: 2px;
 }
-QScrollBar::handle:vertical:hover {
-    background: #4A6B5A;
-}
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-    height: 0px;
-}
-QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-    background: transparent;
-}
+QScrollBar::handle:vertical:hover { background: #4A6B5A; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
 """
 
 
@@ -73,7 +65,6 @@ class QuizDialog(QDialog):
         self.inputs = {}
         self.unit_inputs = {}
         self.result_labels = {}
-        self.start_time = None
         self.remaining = time_limit or 0
         self.time_limit = time_limit or 0
         self.finished = False
@@ -294,6 +285,16 @@ class QuizDialog(QDialog):
             self.timer.timeout.connect(self.tick)
             self.timer.start(1000)
 
+        if is_server_mode and self.api_client and self.student_id:
+            self.heartbeat_timer = QTimer()
+            self.heartbeat_timer.timeout.connect(self.send_heartbeat)
+            self.heartbeat_timer.start(HEARTBEAT_INTERVAL * 1000)
+            self.send_heartbeat()
+
+    def send_heartbeat(self):
+        if self.api_client and self.student_id:
+            self.api_client.heartbeat(self.student_id)
+
     def _fmt_time(self, sec):
         m = sec // 60
         s = sec % 60
@@ -384,6 +385,8 @@ class QuizDialog(QDialog):
             self.api_client.finish_quiz(
                 self.student_id, correct_count, total_score, percent, duration
             )
+            if hasattr(self, "heartbeat_timer"):
+                self.heartbeat_timer.stop()
 
         dialog = ResultDialog(
             station_name=self.station.get("name", ""),
