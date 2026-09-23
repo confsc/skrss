@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QFont
 from logic.data_loader import load_stations, resource_path
+from logic.specs_formatter import build_specs_html
 from ui.quiz_dialog import QuizDialog
 
 
@@ -240,6 +241,8 @@ class StationListWidget(QWidget):
 
         purpose = station.get("purpose", "—")
 
+        specs_html = build_specs_html(station)
+
         html = f"""
         <style>
             h3 {{
@@ -256,45 +259,11 @@ class StationListWidget(QWidget):
                 line-height: 1.5;
                 margin: 5px 0;
             }}
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 10px;
-                font-size: 14px;
-            }}
-            th {{
-                background-color: {HEADER_COLOR};
-                color: white;
-                padding: 10px;
-                text-align: left;
-                font-size: 14px;
-            }}
-            td {{
-                padding: 10px;
-                border-bottom: 1px solid #E0E0E0;
-                color: {TEXT_COLOR};
-            }}
-            tr:nth-child(even) td {{
-                background-color: #F5F5F5;
-            }}
         </style>
         <h3>Назначение</h3>
         <p>{purpose}</p>
-        <h3>Тактико-технические характеристики</h3>
-        <table>
-        <tr><th style="width: 65%;">Характеристика</th><th style="width: 35%;">Значение</th></tr>
+        {specs_html}
         """
-
-        for spec in station["specs"]:
-            unit = spec.get("unit", "").strip()
-            if unit:
-                name_with_unit = f"{spec['name']}, {unit}"
-            else:
-                name_with_unit = spec["name"]
-            value = spec["answer"]
-            html += f"<tr><td>{name_with_unit}</td><td><b>{value}</b></td></tr>"
-
-        html += "</table>"
 
         self.info_text.setHtml(html)
         self.study_button.setEnabled(True)
