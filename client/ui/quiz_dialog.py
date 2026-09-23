@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QComboBox, QPushButton, QGridLayout, QScrollArea, QWidget,
-    QSizePolicy
+    QSizePolicy, QMessageBox
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from logic.scoring import check_answer, get_key_specs, get_quiz_specs, get_unit_options
 from ui.result_dialog import ResultDialog
 
@@ -14,9 +14,8 @@ ACCENT_COLOR = "#2D6A4F"
 ACCENT_HOVER = "#40916C"
 LIGHT_ACCENT = "#95D5B2"
 BG_COLOR = "#FAFAFA"
-
-MASTER_MODIFIERS = Qt.ControlModifier | Qt.ShiftModifier
-MASTER_KEY = Qt.Key_F1
+DANGER_COLOR = "#991B1B"
+WARN_COLOR = "#B45309"
 
 SCROLLBAR_STYLE = """
 QScrollBar:vertical {
@@ -45,21 +44,40 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
 
 class QuizDialog(QDialog):
 
-    def __init__(self, station, parent=None, count=None, is_control=False):
-        super().__init__(parent)
-        self.station = station
-        self.is_control = is_control
+    def __init__(self, station=None, parent=None,
+                 station_id=None, station_name=None,
+                 specs=None, time_limit=None, student_id=None,
+                 api_client=None, is_control=False,
+                 is_server_mode=False):
 
-        if is_control:
-            self.specs = get_quiz_specs(station)
-            self.setWindowTitle(f"Контроль: {station['name']}")
+        super().__init__(parent)
+
+        self.is_control = is_control
+        self.is_server_mode = is_server_mode
+        self.api_client = api_client
+        self.student_id = student_id
+
+        if is_server_mode:
+            self.station = {"id": station_id, "name": station_name, "specs": specs}
+            self.specs = specs
+            self.setWindowTitle(f"Контроль: {station_name}")
         else:
-            self.specs = get_key_specs(station)
-            self.setWindowTitle(f"Входной контроль: {station['name']}")
+            self.station = station
+            if is_control:
+                self.specs = get_quiz_specs(station)
+                self.setWindowTitle(f"Контроль: {station['name']}")
+            else:
+                self.specs = get_key_specs(station)
+                self.setWindowTitle(f"Входной контроль: {station['name']}")
 
         self.inputs = {}
         self.unit_inputs = {}
         self.result_labels = {}
+        self.start_time = None
+        self.remaining = time_limit or 0
+        self.time_limit = time_limit or 0
+        self.finished = False
+
         self.resize(1150, 800)
         self.setMinimumSize(900, 500)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
@@ -68,28 +86,41 @@ class QuizDialog(QDialog):
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(12)
 
-        title = QLabel(station["name"])
+        top = QHBoxLayout()
+        title = QLabel(self.station.get("name", ""))
         title.setStyleSheet(
             f"color: {HEADER_COLOR}; font-size: 24px; font-weight: bold; padding: 5px;"
         )
-        main_layout.addWidget(title)
+        top.addWidget(title)
+        top.addStretch()
 
-        if is_control:
-            hint = "Ответьте на вопросы. Для каждой характеристики выберите единицу измерения."
+        if is_server_mode and self.time_limit > 0:
+            self.timer_label = QLabel(f"⏱ {self._fmt_time(self.time_limit)}")
+            self.timer_label.setStyleSheet(f"""
+                color: white; background-color: {ACCENT_COLOR};
+                font-size: 20px; font-weight: bold;
+                padding: 10px 20px; border-radius: 10px;
+            """)
+            top.addWidget(self.timer_label)
+
+        main_layout.addLayout(top)
+
+        if is_server_mode:
+            hint_text = "Ответьте на вопросы. Для каждой характеристики выберите единицу измерения."
+        elif is_control:
+            hint_text = "Ответьте на вопросы."
         else:
-            hint = "Заполните характеристики. Для каждой выберите единицу измерения."
-        hint_lbl = QLabel(hint)
-        hint_lbl.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 14px; padding: 5px;")
-        main_layout.addWidget(hint_lbl)
+            hint_text = "Заполните характеристики."
+
+        hint = QLabel(hint_text)
+        hint.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 14px; padding: 5px;")
+        main_layout.addWidget(hint)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         scroll.setStyleSheet(f"""
-            QScrollArea {{
-                border: none;
-                background-color: {BG_COLOR};
-            }}
+            QScrollArea {{ border: none; background-color: {BG_COLOR}; }}
             {SCROLLBAR_STYLE}
         """)
 
@@ -138,27 +169,22 @@ class QuizDialog(QDialog):
             label.setMinimumWidth(LABEL_MIN)
             label.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 14px; padding: 5px;")
             label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
             grid.addWidget(label, row_idx, 0)
 
-            if spec["type"] == "choice":
+            spec_type = spec.get("type", "text")
+
+            if spec_type == "choice":
                 widget = QComboBox()
                 widget.addItem("")
                 for opt in spec.get("options", []):
                     widget.addItem(opt)
                 widget.setMinimumHeight(40)
-                widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
                 widget.setStyleSheet(f"""
                     QComboBox {{
-                        font-size: 14px;
-                        padding: 5px 10px;
+                        font-size: 14px; padding: 5px 10px;
                         border: 2px solid {LIGHT_ACCENT};
-                        border-radius: 6px;
-                        background-color: white;
+                        border-radius: 6px; background-color: white;
                         color: {TEXT_COLOR};
-                    }}
-                    QComboBox:hover {{
-                        border-color: {ACCENT_HOVER};
                     }}
                 """)
                 self.inputs[spec["name"]] = widget
@@ -171,18 +197,12 @@ class QuizDialog(QDialog):
                 widget = QLineEdit()
                 widget.setPlaceholderText("Введите значение...")
                 widget.setMinimumHeight(40)
-                widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
                 widget.setStyleSheet(f"""
                     QLineEdit {{
-                        font-size: 14px;
-                        padding: 5px 10px;
+                        font-size: 14px; padding: 5px 10px;
                         border: 2px solid {LIGHT_ACCENT};
-                        border-radius: 6px;
-                        background-color: white;
+                        border-radius: 6px; background-color: white;
                         color: {TEXT_COLOR};
-                    }}
-                    QLineEdit:focus {{
-                        border-color: {ACCENT_HOVER};
                     }}
                 """)
                 self.inputs[spec["name"]] = widget
@@ -198,18 +218,12 @@ class QuizDialog(QDialog):
                             unit_widget.addItem(opt)
                         unit_widget.setMinimumWidth(UNIT_MIN)
                         unit_widget.setMinimumHeight(40)
-                        unit_widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
                         unit_widget.setStyleSheet(f"""
                             QComboBox {{
-                                font-size: 14px;
-                                padding: 5px 8px;
+                                font-size: 14px; padding: 5px 8px;
                                 border: 2px solid {LIGHT_ACCENT};
-                                border-radius: 6px;
-                                background-color: white;
+                                border-radius: 6px; background-color: white;
                                 color: {TEXT_COLOR};
-                            }}
-                            QComboBox:hover {{
-                                border-color: {ACCENT_HOVER};
                             }}
                         """)
                         self.unit_inputs[spec["name"]] = unit_widget
@@ -248,17 +262,12 @@ class QuizDialog(QDialog):
         self.check_btn.setMinimumWidth(170)
         self.check_btn.setStyleSheet(f"""
             QPushButton {{
-                font-size: 16px;
-                font-weight: bold;
-                background-color: {ACCENT_COLOR};
-                color: white;
-                border-radius: 10px;
+                font-size: 16px; font-weight: bold;
+                background-color: {ACCENT_COLOR}; color: white;
+                border-radius: 10px; border: none;
                 padding: 8px 25px;
-                border: none;
             }}
-            QPushButton:hover {{
-                background-color: {ACCENT_HOVER};
-            }}
+            QPushButton:hover {{ background-color: {ACCENT_HOVER}; }}
         """)
         self.check_btn.clicked.connect(self.check)
         btns.addWidget(self.check_btn)
@@ -268,16 +277,11 @@ class QuizDialog(QDialog):
         cancel_btn.setMinimumWidth(140)
         cancel_btn.setStyleSheet("""
             QPushButton {
-                font-size: 16px;
-                background-color: #757575;
-                color: white;
-                border-radius: 10px;
+                font-size: 16px; background-color: #757575;
+                color: white; border-radius: 10px; border: none;
                 padding: 8px 25px;
-                border: none;
             }
-            QPushButton:hover {
-                background-color: #616161;
-            }
+            QPushButton:hover { background-color: #616161; }
         """)
         cancel_btn.clicked.connect(self.reject)
         btns.addWidget(cancel_btn)
@@ -285,49 +289,55 @@ class QuizDialog(QDialog):
         btns.addStretch()
         main_layout.addLayout(btns)
 
-    def keyPressEvent(self, event):
-        if (
-            self.is_control
-            and event.modifiers() == MASTER_MODIFIERS
-            and event.key() == MASTER_KEY
-        ):
-            self.autofill_correct_answers()
-            event.accept()
+        if is_server_mode and self.time_limit > 0:
+            self.timer = QTimer()
+            self.timer.timeout.connect(self.tick)
+            self.timer.start(1000)
+
+    def _fmt_time(self, sec):
+        m = sec // 60
+        s = sec % 60
+        return f"{m:02d}:{s:02d}"
+
+    def tick(self):
+        self.remaining -= 1
+        self.timer_label.setText(f"⏱ {self._fmt_time(max(0, self.remaining))}")
+
+        if self.remaining <= 60:
+            self.timer_label.setStyleSheet(f"""
+                color: white; background-color: {WARN_COLOR};
+                font-size: 20px; font-weight: bold;
+                padding: 10px 20px; border-radius: 10px;
+            """)
+        if self.remaining <= 10:
+            self.timer_label.setStyleSheet(f"""
+                color: white; background-color: {DANGER_COLOR};
+                font-size: 20px; font-weight: bold;
+                padding: 10px 20px; border-radius: 10px;
+            """)
+        if self.remaining <= 0:
+            self.timer.stop()
+            self.time_out()
+
+    def time_out(self):
+        if self.finished:
             return
-        super().keyPressEvent(event)
+        self.finished = True
+        QMessageBox.warning(self, "Время вышло", "Время истекло. Тест завершён.")
+        self.check(auto=True)
 
-    def autofill_correct_answers(self):
-        for spec in self.specs:
-            widget = self.inputs[spec["name"]]
-            answer = spec["answer"]
+    def check(self, auto=False):
+        if self.finished and not auto:
+            return
+        self.finished = True
 
-            if isinstance(widget, QComboBox):
-                idx = widget.findText(answer)
-                if idx >= 0:
-                    widget.setCurrentIndex(idx)
-                else:
-                    for i in range(widget.count()):
-                        if widget.itemText(i).lower() == answer.lower():
-                            widget.setCurrentIndex(i)
-                            break
-            else:
-                widget.setText(answer)
-
-                if spec["name"] in self.unit_inputs:
-                    unit_widget = self.unit_inputs[spec["name"]]
-                    correct_unit = spec.get("unit", "").strip()
-                    idx = unit_widget.findText(correct_unit)
-                    if idx >= 0:
-                        unit_widget.setCurrentIndex(idx)
-
-    def check(self):
         errors = []
         total_score = 0.0
         max_score = 0.0
+        correct_count = 0
 
         for spec in self.specs:
             widget = self.inputs[spec["name"]]
-            result_lbl = self.result_labels[spec["name"]]
             weight = spec.get("weight", 0.5)
             max_score += weight
 
@@ -343,8 +353,9 @@ class QuizDialog(QDialog):
 
             if check_answer(spec, user_answer, user_unit):
                 total_score += weight
-                result_lbl.setText("✔")
-                result_lbl.setStyleSheet(
+                correct_count += 1
+                self.result_labels[spec["name"]].setText("✔")
+                self.result_labels[spec["name"]].setStyleSheet(
                     "color: #2E7D32; font-size: 22px; font-weight: bold;"
                 )
             else:
@@ -355,34 +366,32 @@ class QuizDialog(QDialog):
                     user_full = f"{user_answer} (единица не выбрана)" if user_answer else "—"
                 else:
                     user_full = user_answer if user_answer else "—"
-
                 correct_full = f"{spec['answer']} {unit}".strip()
-
                 errors.append({
                     "name": spec["name"],
                     "user": user_full,
                     "correct": correct_full,
                 })
-                result_lbl.setText("✘")
-                result_lbl.setStyleSheet(
+                self.result_labels[spec["name"]].setText("✘")
+                self.result_labels[spec["name"]].setStyleSheet(
                     "color: #C62828; font-size: 22px; font-weight: bold;"
                 )
 
-        correct_count = len(self.specs) - len(errors)
         percent = (total_score / max_score * 100) if max_score > 0 else 0
 
+        if self.is_server_mode and self.api_client and self.student_id:
+            duration = self.time_limit - max(0, self.remaining)
+            self.api_client.finish_quiz(
+                self.student_id, correct_count, total_score, percent, duration
+            )
+
         dialog = ResultDialog(
-            station_name=self.station["name"],
+            station_name=self.station.get("name", ""),
             correct=correct_count,
             total=len(self.specs),
             percent=percent,
             errors=errors,
-            is_control=self.is_control,
+            is_control=self.is_control or self.is_server_mode,
         )
         dialog.exec_()
-
-        if self.is_control:
-            self.accept()
-        else:
-            if not errors:
-                self.accept()
+        self.accept()

@@ -44,8 +44,9 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
 
 class StationListTab(QWidget):
 
-    def __init__(self):
+    def __init__(self, quiz_window):
         super().__init__()
+        self.quiz_window = quiz_window
         self.stations = load_stations()
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
@@ -53,15 +54,18 @@ class StationListTab(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
-        title = QLabel("Выберите станцию для контроля")
+        title = QLabel("Список станций")
         title.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 20px; font-weight: bold;"
+            f"color: {HEADER_COLOR}; font-size: 22px; font-weight: bold;"
         )
         layout.addWidget(title)
 
-        hint = QLabel("Двойной клик по станции — начать контроль")
-        hint.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 14px;")
-        layout.addWidget(hint)
+        info = QLabel(
+            "Нажмите на станцию, чтобы начать летучку по ней.\n"
+            "Сервер выдаст вопросы и примет результат."
+        )
+        info.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 14px;")
+        layout.addWidget(info)
 
         self.list_widget = QListWidget()
         self.list_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -76,7 +80,7 @@ class StationListTab(QWidget):
                 outline: none;
             }}
             QListWidget::item {{
-                padding: 10px 12px;
+                padding: 12px;
                 border-bottom: 1px solid #E0E0E0;
                 outline: none;
             }}
@@ -88,23 +92,19 @@ class StationListTab(QWidget):
                 border: none;
                 outline: none;
             }}
-            QListWidget::item:focus {{
-                border: none;
-                outline: none;
-            }}
             QListWidget::item:hover {{
                 background-color: #E8F5E9;
             }}
             {SCROLLBAR_STYLE}
         """)
-        self.list_widget.itemDoubleClicked.connect(self.start_control)
+        self.list_widget.itemClicked.connect(self.start_control)
 
         radio = [s for s in self.stations if s["category"] == "radio"]
         satellite = [s for s in self.stations if s["category"] == "satellite"]
 
         f = QFont()
         f.setBold(True)
-        f.setPointSize(12)
+        f.setPointSize(13)
 
         header_radio = QListWidgetItem("── РАДИОРЕЛЕЙНЫЕ СТАНЦИИ ──")
         header_radio.setFlags(Qt.NoItemFlags)
@@ -131,89 +131,26 @@ class StationListTab(QWidget):
         layout.addWidget(self.list_widget)
 
     def start_control(self, item):
-        station_id = item.data(Qt.UserRole)
-        if not station_id:
-            return
-
-        station = next((s for s in self.stations if s["id"] == station_id), None)
-        if not station:
-            return
-
-        dialog = QuizDialog(station, self, is_control=True)
-        dialog.exec_()
-
-
-class RandomStationTab(QWidget):
-
-    def __init__(self):
-        super().__init__()
-        self.stations = load_stations()
-        self.setStyleSheet(f"background-color: {BG_COLOR};")
-
-        layout = QVBoxLayout(self)
-        layout.setAlignment(Qt.AlignCenter)
-        layout.setSpacing(20)
-
-        title = QLabel("Контроль по всем станциям")
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 24px; font-weight: bold;"
+        QMessageBox.information(
+            self, "Внимание",
+            "В режиме летучки станцию выдаёт сервер.\n"
+            "Сейчас будет запущена летучка по этой станции,\n"
+            "если сервер её назначил."
         )
-        layout.addWidget(title)
-
-        info = QLabel(
-            "Программа выберет случайную станцию из всех доступных.\n"
-            "Количество вопросов зависит от станции (70%, от 7 до 15)."
-        )
-        info.setAlignment(Qt.AlignCenter)
-        info.setStyleSheet(f"font-size: 15px; color: {TEXT_COLOR}; line-height: 1.6;")
-        layout.addWidget(info)
-
-        layout.addSpacing(20)
-
-        btn = QPushButton("🎲  Начать контроль по случайной станции")
-        btn.setMinimumSize(520, 80)
-        btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        btn.setStyleSheet(f"""
-            QPushButton {{
-                font-size: 17px;
-                font-weight: bold;
-                background-color: {ACCENT_COLOR};
-                color: white;
-                border-radius: 15px;
-                border: none;
-                padding: 12px 25px;
-            }}
-            QPushButton:hover {{
-                background-color: {ACCENT_HOVER};
-            }}
-        """)
-        btn.clicked.connect(self.start_control)
-
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-        btn_layout.addWidget(btn)
-        btn_layout.addStretch()
-        layout.addLayout(btn_layout)
-
-    def start_control(self):
-        if not self.stations:
-            QMessageBox.warning(self, "Ошибка", "Нет станций в базе.")
-            return
-        station = random.choice(self.stations)
-        dialog = QuizDialog(station, self, is_control=True)
-        dialog.exec_()
 
 
 class QuizWindow(QMainWindow):
 
-    def __init__(self, back_callback):
+    def __init__(self, back_callback, api_client, fio, group_name):
         super().__init__()
         self.back_callback = back_callback
+        self.api_client = api_client
+        self.fio = fio
+        self.group_name = group_name
 
-        self.setWindowTitle("Режим контроля")
-        self.resize(1250, 850)
-        self.setMinimumSize(900, 600)
+        self.setWindowTitle(f"Режим контроля — {fio} ({group_name})")
+        self.resize(1100, 800)
+        self.setMinimumSize(800, 600)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         central = QWidget()
@@ -223,61 +160,95 @@ class QuizWindow(QMainWindow):
         layout.setSpacing(15)
 
         top = QHBoxLayout()
-        back_btn = QPushButton("← Назад на стартовый экран")
-        back_btn.setMinimumHeight(44)
+        back_btn = QPushButton("← Назад")
+        back_btn.setMinimumHeight(45)
         back_btn.setStyleSheet(f"""
             QPushButton {{
-                font-size: 15px;
-                background-color: {ACCENT_HOVER};
-                color: white;
-                border-radius: 8px;
-                padding: 8px 20px;
-                border: none;
+                font-size: 15px; background-color: {ACCENT_HOVER};
+                color: white; border-radius: 8px;
+                padding: 8px 20px; border: none;
             }}
-            QPushButton:hover {{
-                background-color: {ACCENT_COLOR};
-            }}
+            QPushButton:hover {{ background-color: {ACCENT_COLOR}; }}
         """)
         back_btn.clicked.connect(self.go_back)
         top.addWidget(back_btn)
         top.addStretch()
+
+        user_info = QLabel(f"Курсант: <b>{fio}</b>  |  Группа: <b>{group_name}</b>")
+        user_info.setStyleSheet(f"color: {HEADER_COLOR}; font-size: 14px;")
+        top.addWidget(user_info)
         layout.addLayout(top)
 
-        self.tabs = QTabWidget()
-        self.tabs.setStyleSheet(f"""
-            QTabWidget::pane {{
-                border: 2px solid {LIGHT_ACCENT};
-                border-radius: 10px;
-                background-color: {BG_COLOR};
-                top: -1px;
+        info_frame = QLabel(
+            "⏳  Сейчас активна летучка от преподавателя.\n"
+            "Станция и вопросы приходят от сервера."
+        )
+        info_frame.setAlignment(Qt.AlignCenter)
+        info_frame.setStyleSheet(
+            f"color: {HEADER_COLOR}; font-size: 15px; font-weight: bold; "
+            f"background-color: #E8F5E9; padding: 15px; border-radius: 10px;"
+        )
+        layout.addWidget(info_frame)
+
+        self.start_btn = QPushButton("🚀  Начать летучку")
+        self.start_btn.setMinimumHeight(60)
+        self.start_btn.setStyleSheet(f"""
+            QPushButton {{
+                font-size: 18px; font-weight: bold;
+                background-color: {ACCENT_COLOR}; color: white;
+                border-radius: 10px; border: none;
             }}
-            QTabBar {{
-                background-color: transparent;
-            }}
-            QTabBar::tab {{
-                background-color: #E8F5E9;
-                color: {TEXT_COLOR};
-                padding: 12px 28px;
-                font-size: 15px;
-                font-weight: bold;
-                min-width: 260px;
-                min-height: 22px;
-                border-top-left-radius: 8px;
-                border-top-right-radius: 8px;
-                margin-right: 3px;
-                margin-top: 0px;
-            }}
-            QTabBar::tab:selected {{
-                background-color: {ACCENT_COLOR};
-                color: white;
-            }}
-            QTabBar::tab:hover {{
-                background-color: {LIGHT_ACCENT};
-            }}
+            QPushButton:hover {{ background-color: {ACCENT_HOVER}; }}
         """)
-        self.tabs.addTab(StationListTab(), "Контроль по станциям")
-        self.tabs.addTab(RandomStationTab(), "Контроль по всем станциям")
-        layout.addWidget(self.tabs)
+        self.start_btn.clicked.connect(self.start_quiz)
+        layout.addWidget(self.start_btn)
+
+        self.station_label = QLabel("")
+        self.station_label.setAlignment(Qt.AlignCenter)
+        self.station_label.setStyleSheet(
+            f"color: {TEXT_COLOR}; font-size: 16px; padding: 10px;"
+        )
+        layout.addWidget(self.station_label)
+
+        layout.addStretch()
+
+    def start_quiz(self):
+        status, data = self.api_client.start_quiz(self.fio, self.group_name)
+
+        if status == 409:
+            QMessageBox.warning(
+                self, "Вы уже сдали",
+                data.get("message", "Вы уже сдали летучку.")
+            )
+            return
+
+        if status != 200 or data.get("status") != "ok":
+            QMessageBox.warning(
+                self, "Ошибка",
+                data.get("message", "Не удалось начать летучку.")
+            )
+            return
+
+        self.station_label.setText(
+            f"Станция: <b>{data.get('station_name', '—')}</b>  |  "
+            f"Вопросов: <b>{data.get('question_count', 0)}</b>  |  "
+            f"Время: <b>{data.get('time_limit', 0)} сек</b>"
+        )
+
+        dialog = QuizDialog(
+            station_id=data.get("station_id"),
+            station_name=data.get("station_name"),
+            specs=data.get("specs", []),
+            time_limit=data.get("time_limit", 60),
+            student_id=data.get("student_id"),
+            api_client=self.api_client,
+            parent=self,
+            is_control=True,
+            is_server_mode=True,
+        )
+        dialog.exec_()
+
+        self.go_back()
 
     def go_back(self):
         self.back_callback()
