@@ -10,23 +10,19 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
       - name: Install dependencies
         run: |
           pip install PyQt5
+          pip install requests
           pip install pyinstaller
-
       - name: Build Client
         working-directory: ./client
         run: pyinstaller --onedir --windowed --name RRSTrainer-Client --icon icon.ico --add-data "data;data" --add-data "images;images" --add-data "icon.ico;." main.py
-
       - name: Zip Client
         run: Compress-Archive -Path client/dist/RRSTrainer-Client/* -DestinationPath client/dist/RRSTrainer-Client.zip
-
       - uses: actions/upload-artifact@v4
         with:
           name: RRSTrainer-Client
@@ -36,24 +32,19 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
       - name: Install dependencies
         run: |
           pip install PyQt5
           pip install Flask
           pip install pyinstaller
-
       - name: Build Server
         working-directory: ./server
-        run: pyinstaller --onedir --windowed --name RRSTrainer-Server --icon icon.ico --add-data "..\shared;shared" --add-data "..\client\data;data" main.py
-
+        run: pyinstaller --onedir --windowed --name RRSTrainer-Server --add-data "..\shared;shared" --add-data "..\client\data;data" main.py
       - name: Zip Server
         run: Compress-Archive -Path server/dist/RRSTrainer-Server/* -DestinationPath server/dist/RRSTrainer-Server.zip
-
       - uses: actions/upload-artifact@v4
         with:
           name: RRSTrainer-Server
