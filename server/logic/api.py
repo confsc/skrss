@@ -10,17 +10,28 @@ from datetime import datetime
 from flask import Flask, request, jsonify
 
 
-def _get_paths():
-    current = os.path.dirname(os.path.abspath(__file__))
-    root = os.path.abspath(os.path.join(current, "..", ".."))
-    shared = os.path.join(root, "shared")
-    client_data = os.path.join(root, "data")
-    return root, shared, client_data
+def _setup_paths():
+    if hasattr(sys, "_MEIPASS"):
+        shared = os.path.join(sys._MEIPASS, "shared")
+        server_logic = os.path.join(sys._MEIPASS, "server", "logic")
+        data_path = os.path.join(sys._MEIPASS, "data")
+        if not os.path.exists(server_logic):
+            server_logic = os.path.join(sys._MEIPASS, "logic")
+    else:
+        current = os.path.dirname(os.path.abspath(__file__))
+        root = os.path.abspath(os.path.join(current, "..", ".."))
+        shared = os.path.join(root, "shared")
+        server_logic = os.path.join(root, "server", "logic")
+        data_path = os.path.join(root, "client", "data")
+
+    for p in [shared, server_logic]:
+        if p not in sys.path:
+            sys.path.insert(0, p)
+
+    return data_path
 
 
-ROOT, SHARED, CLIENT_DATA = _get_paths()
-sys.path.insert(0, SHARED)
-sys.path.insert(0, os.path.join(ROOT, "server", "logic"))
+DATA_PATH = _setup_paths()
 
 from config import (  # noqa: E402
     API_START, API_FINISH, API_HEARTBEAT,
@@ -33,7 +44,7 @@ from database import Database  # noqa: E402
 
 
 def _load_stations():
-    path = os.path.join(CLIENT_DATA, "stations.json")
+    path = os.path.join(DATA_PATH, "stations.json")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 

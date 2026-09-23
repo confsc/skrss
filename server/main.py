@@ -1,29 +1,38 @@
-"""
-Точка входа сервера.
-Запускает:
-- Flask API (в отдельном потоке)
-- UDP broadcast (в отдельном потоке)
-- PyQt5 UI (главный поток)
-"""
-import os
 import sys
+import os
 import threading
 import traceback
 
 
-def _get_paths():
-    current = os.path.dirname(os.path.abspath(__file__))
-    root = os.path.abspath(os.path.join(current, ".."))
-    shared = os.path.join(root, "shared")
-    server_logic = os.path.join(root, "server", "logic")
-    server_ui = os.path.join(root, "server", "ui")
-    return root, shared, server_logic, server_ui
+def resource_path(relative_path):
+    if hasattr(sys, "_MEIPASS"):
+        return os.path.join(sys._MEIPASS, relative_path)
+    base = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, relative_path)
 
 
-ROOT, SHARED, SERVER_LOGIC, SERVER_UI = _get_paths()
-sys.path.insert(0, SHARED)
-sys.path.insert(0, SERVER_LOGIC)
-sys.path.insert(0, SERVER_UI)
+def _setup_paths():
+    if hasattr(sys, "_MEIPASS"):
+        base = sys._MEIPASS
+        shared = os.path.join(base, "shared")
+        server_logic = os.path.join(base, "server", "logic")
+        server_ui = os.path.join(base, "server", "ui")
+        if not os.path.exists(shared):
+            server_logic = os.path.join(base, "logic")
+            server_ui = os.path.join(base, "ui")
+    else:
+        current = os.path.dirname(os.path.abspath(__file__))
+        root = os.path.abspath(os.path.join(current, ".."))
+        shared = os.path.join(root, "shared")
+        server_logic = os.path.join(root, "server", "logic")
+        server_ui = os.path.join(root, "server", "ui")
+
+    for p in [shared, server_logic, server_ui]:
+        if p not in sys.path:
+            sys.path.insert(0, p)
+
+
+_setup_paths()
 
 from config import SERVER_HOST, SERVER_PORT  # noqa: E402
 
@@ -53,7 +62,7 @@ def run_ui():
 
         app = QApplication(sys.argv)
 
-        icon_path = os.path.join(ROOT, "icon.ico")
+        icon_path = resource_path("icon.ico")
         if os.path.exists(icon_path):
             app.setWindowIcon(QIcon(icon_path))
 

@@ -1,6 +1,5 @@
 """
 UDP-вещание: сервер объявляет о себе в локальной сети.
-Клиент слушает broadcast и находит сервер автоматически.
 """
 import socket
 import threading
@@ -10,6 +9,10 @@ import sys
 
 
 def _get_shared_path():
+    if hasattr(sys, "_MEIPASS"):
+        shared = os.path.join(sys._MEIPASS, "shared")
+        if os.path.exists(shared):
+            return shared
     current = os.path.dirname(os.path.abspath(__file__))
     root = os.path.abspath(os.path.join(current, "..", ".."))
     return os.path.join(root, "shared")

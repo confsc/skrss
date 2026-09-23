@@ -1,19 +1,18 @@
 """
 Модуль работы с базой данных SQLite.
-Хранит:
-- текущую активную летучку
-- список студентов, проходящих летучку
-- историю попыток
 """
 import sqlite3
 import os
 import sys
-import json
 import time
 from datetime import datetime
 
 
 def _get_shared_path():
+    if hasattr(sys, "_MEIPASS"):
+        shared = os.path.join(sys._MEIPASS, "shared")
+        if os.path.exists(shared):
+            return shared
     current = os.path.dirname(os.path.abspath(__file__))
     root = os.path.abspath(os.path.join(current, "..", ".."))
     return os.path.join(root, "shared")
@@ -24,6 +23,8 @@ from config import DB_FILENAME  # noqa: E402
 
 
 def _get_db_path():
+    if hasattr(sys, "_MEIPASS"):
+        return os.path.join(os.path.dirname(sys.executable), DB_FILENAME)
     current = os.path.dirname(os.path.abspath(__file__))
     root = os.path.abspath(os.path.join(current, "..", ".."))
     return os.path.join(root, DB_FILENAME)

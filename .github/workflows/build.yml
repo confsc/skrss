@@ -1,4 +1,4 @@
-name: Build Windows EXE
+name: Build Client and Server EXE
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-client:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,13 +20,41 @@ jobs:
           pip install PyQt5
           pip install pyinstaller
 
-      - name: Build EXE
-        run: pyinstaller --onedir --windowed --name RRSTrainer --add-data "data;data" --add-data "images;images" main.py
+      - name: Build Client
+        working-directory: ./client
+        run: pyinstaller --onedir --windowed --name RRSTrainer-Client --icon icon.ico --add-data "data;data" --add-data "images;images" --add-data "icon.ico;." main.py
 
-      - name: Zip build folder
-        run: Compress-Archive -Path dist/RRSTrainer/* -DestinationPath dist/RRSTrainer.zip
+      - name: Zip Client
+        run: Compress-Archive -Path client/dist/RRSTrainer-Client/* -DestinationPath client/dist/RRSTrainer-Client.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: RRSTrainer-portable
-          path: dist/RRSTrainer.zip
+          name: RRSTrainer-Client
+          path: client/dist/RRSTrainer-Client.zip
+
+  build-server:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install PyQt5
+          pip install Flask
+          pip install pyinstaller
+
+      - name: Build Server
+        working-directory: ./server
+        run: pyinstaller --onedir --windowed --name RRSTrainer-Server --icon icon.ico --add-data "..\shared;shared" --add-data "..\client\data;data" main.py
+
+      - name: Zip Server
+        run: Compress-Archive -Path server/dist/RRSTrainer-Server/* -DestinationPath server/dist/RRSTrainer-Server.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RRSTrainer-Server
+          path: server/dist/RRSTrainer-Server.zip
