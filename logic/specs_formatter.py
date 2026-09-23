@@ -9,6 +9,8 @@ GROUPS = [
     {
         "id": "range",
         "patterns": [
+            r'[Дд]иапазонах?\s*(\d+)\s*и\s*(\d+)',
+            r'[Дд]иапазоне?\s*(\d+)',
             r'[Дд]иапазон[аеуы]?х?\s*(\d+)',
         ],
         "label_template": "Диапазон {n}",
@@ -27,17 +29,10 @@ GROUPS = [
 ]
 
 
-def _restore_base(base):
-    base = base.strip()
-    if re.match(r'^рабочих\s+частот$', base):
-        return "Диапазон рабочих частот"
-    if re.match(r'^рабочие\s+частоты$', base):
-        return "Диапазон рабочих частот"
-    if re.match(r'^на\s+(передачу|приём|прием)$', base):
-        return "Диапазон " + base
-    if base == "":
-        return "Диапазон"
-    return base
+BASE_FIXES = {
+    r'^рабочих\s+частот$': 'Диапазон рабочих частот',
+    r'^рабочие\s+частоты$': 'Диапазон рабочих частот',
+}
 
 
 def _parse_name(name):
@@ -45,8 +40,16 @@ def _parse_name(name):
         for pattern in group["patterns"]:
             m = re.search(pattern, name)
             if m:
-                value = m.group(1) if m.groups() else ""
-                label = group["label_template"].format(n=value)
+                if len(m.groups()) == 2 and m.group(2):
+                    rn1 = int(m.group(1))
+                    rn2 = int(m.group(2))
+                    labels = [
+                        group["label_template"].format(n=rn1),
+                        group["label_template"].format(n=rn2),
+                    ]
+                else:
+                    val = m.group(1) if m.groups() else ""
+                    labels = [group["label_template"].format(n=val)]
 
                 prefix = name[:m.start()].strip()
                 suffix = name[m.end():].strip()
@@ -58,23 +61,31 @@ def _parse_name(name):
                 suffix = re.sub(r'^\bв\b\s*', '', suffix).strip()
 
                 qualifier = ""
-                m_q = re.search(r'\(([^)]+)\)', suffix)
-                if m_q:
-                    qualifier = m_q.group(1).strip()
-                    suffix = (suffix[:m_q.start()] + suffix[m_q.end():]).strip()
 
-                m_q2 = re.search(r'\(([^)]+)\)', prefix)
-                if m_q2:
-                    if qualifier:
-                        qualifier = f"{m_q2.group(1).strip()}, {qualifier}"
-                    else:
-                        qualifier = m_q2.group(1).strip()
-                    prefix = (prefix[:m_q2.start()] + prefix[m_q2.end():]).strip()
+                def _grab_qual(s):
+                    nonlocal qualifier
+                    m_q = re.search(r'\(([^)]*)\)', s)
+                    if m_q:
+                        q = m_q.group(1).strip()
+                        if q:
+                            if qualifier:
+                                qualifier = f"{qualifier}, {q}"
+                            else:
+                                qualifier = q
+                        s = (s[:m_q.start()] + s[m_q.end():]).strip()
+                        s = re.sub(r'\s+', ' ', s).strip()
+                    return s
 
-                m_on = re.match(r'^на\s+(передачу|приём|прием)$', suffix)
-                if m_on:
-                    qualifier = ("на " + m_on.group(1)).strip()
-                    suffix = ""
+                suffix = _grab_qual(suffix)
+                prefix = _grab_qual(prefix)
+
+                suffix = re.sub(r'^[\s,;:()\-]+', '', suffix).strip()
+                suffix = re.sub(r'[\s,;:()\-]+$', '', suffix).strip()
+                prefix = re.sub(r'[\s,;:()\-]+$', '', prefix).strip()
+                prefix = re.sub(r'^[\s,;:()\-]+', '', prefix).strip()
+
+                suffix = re.sub(r'^и\s+\d+$', '', suffix).strip()
+                suffix = re.sub(r'^\d+$', '', suffix).strip()
 
                 if prefix and suffix:
                     base = f"{prefix} {suffix}"
@@ -85,12 +96,21 @@ def _parse_name(name):
 
                 base = re.sub(r'\s+', ' ', base).strip()
                 base = re.sub(r'[\s,;:()\-]+$', '', base).strip()
+                base = re.sub(r'\s+\d+$', '', base).strip()
 
-                base = _restore_base(base)
+                for pat, repl in BASE_FIXES.items():
+                    if re.match(pat, base):
+                        base = repl
+                        break
+
+                if base.startswith("Диапазон "):
+                    base = re.sub(r'^Диапазон\s+', '', base).strip()
+                    if not base:
+                        base = "Диапазон рабочих частот"
 
                 return {
                     "group_id": group["id"],
-                    "value": label,
+                    "labels": labels,
                     "base": base,
                     "qualifier": qualifier,
                 }
@@ -130,7 +150,7 @@ def build_specs_html(station):
             general.append((name, answer, unit))
         else:
             gid = parsed["group_id"]
-            val = parsed["value"]
+            labels = parsed["labels"]
             base = parsed["base"]
             qualifier = parsed["qualifier"]
 
@@ -146,17 +166,20 @@ def build_specs_html(station):
             key = qualifier if qualifier else "__no_qual__"
             if key not in grouped[gid][base]["entries"]:
                 grouped[gid][base]["entries"][key] = {}
-            grouped[gid][base]["entries"][key][val] = answer
 
-    all_labels_global = set()
+            for lbl in labels:
+                grouped[gid][base]["entries"][key][lbl] = answer
+
+    all_labels = set()
     for gid, bases in grouped.items():
         for base, data in bases.items():
             for key, vals in data["entries"].items():
-                all_labels_global.update(vals.keys())
+                all_labels.update(vals.keys())
 
-    sorted_labels_global = sorted(
-        all_labels_global,
-        key=lambda x: _sort_key(list(grouped.keys())[0], x) if grouped else 0
+    first_gid = list(grouped.keys())[0] if grouped else "range"
+    sorted_labels = sorted(
+        all_labels,
+        key=lambda x: _sort_key(first_gid, x)
     )
 
     html = f"""
@@ -214,8 +237,8 @@ def build_specs_html(station):
     """
 
     total_cols = 2
-    if sorted_labels_global:
-        total_cols = len(sorted_labels_global) + 1
+    if sorted_labels:
+        total_cols = len(sorted_labels) + 1
 
     html += "<tr><th style='width: 35%;'>Характеристика</th>"
     html += f"<th style='width: 65%;' colspan='{total_cols - 1}'>Значение</th></tr>"
@@ -226,16 +249,6 @@ def build_specs_html(station):
         html += f"<td colspan='{total_cols - 1}'><b>{ans}</b></td></tr>"
 
     for gid, bases in grouped.items():
-        all_labels = set()
-        for base, data in bases.items():
-            for key, vals in data["entries"].items():
-                all_labels.update(vals.keys())
-
-        sorted_labels = sorted(
-            all_labels,
-            key=lambda x: _sort_key(gid, x)
-        )
-
         html += "<tr>"
         html += "<th>Характеристика</th>"
         for label in sorted_labels:
@@ -259,7 +272,10 @@ def build_specs_html(station):
                     unique = set(vals[l] for l in present)
                     if len(unique) == 1:
                         html += f"<tr><td>{base_with_unit}</td>"
-                        html += f"<td class='center' colspan='{len(sorted_labels)}'><b>{vals[present[0]]}</b></td></tr>"
+                        html += (
+                            f"<td class='center' colspan='{len(sorted_labels)}'>"
+                            f"<b>{vals[present[0]]}</b></td></tr>"
+                        )
                         continue
 
                 html += f"<tr><td>{base_with_unit}</td>"
@@ -271,12 +287,14 @@ def build_specs_html(station):
                 html += "</tr>"
             else:
                 simple_vals = entries.get("__no_qual__", {})
-                has_simple = bool(simple_vals)
 
-                html += f"<tr><td class='parent-row' colspan='{len(sorted_labels) + 1}'>{base_with_unit}</td></tr>"
+                html += (
+                    f"<tr><td class='parent-row' colspan='{len(sorted_labels) + 1}'>"
+                    f"{base_with_unit}</td></tr>"
+                )
 
-                if has_simple:
-                    html += f"<tr><td class='child-row'></td>"
+                if simple_vals:
+                    html += "<tr><td class='child-row'>(без уточнения)</td>"
                     for label in sorted_labels:
                         if label in simple_vals:
                             html += f"<td class='center'><b>{simple_vals[label]}</b></td>"
@@ -288,8 +306,7 @@ def build_specs_html(station):
                     if key == "__no_qual__":
                         continue
 
-                    child_name = key if key.startswith("на ") else key
-                    html += f"<tr><td class='child-row'>{child_name}</td>"
+                    html += f"<tr><td class='child-row'>{key}</td>"
                     for label in sorted_labels:
                         if label in vals:
                             html += f"<td class='center'><b>{vals[label]}</b></td>"
