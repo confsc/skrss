@@ -5,7 +5,6 @@ HEADER_COLOR = "#1B4332"
 LIGHT_ACCENT = "#95D5B2"
 TEXT_COLOR = "#1B1B1B"
 
-
 GROUPS = [
     {
         "id": "range",
@@ -21,7 +20,7 @@ GROUPS = [
             r'\b(Ku|C|X|Ka|L|S)\s*-?\s*диапазон',
             r'диапазон[аеуы]?\s+(Ku|C|X|Ka|L|S)\b',
         ],
-        "label_template": "{n}-диапазон",
+        "label_template": "Диапазон {n}",
         "sort": "custom",
         "order": ["L", "S", "C", "X", "Ku", "Ka"],
     },
@@ -41,7 +40,7 @@ def _restore_base(base):
     return base
 
 
-def _try_group(name):
+def _parse_name(name):
     for group in GROUPS:
         for pattern in group["patterns"]:
             m = re.search(pattern, name)
@@ -57,6 +56,25 @@ def _try_group(name):
 
                 suffix = re.sub(r'^[\s,;:()\-]+', '', suffix).strip()
                 suffix = re.sub(r'^\bв\b\s*', '', suffix).strip()
+
+                qualifier = ""
+                m_q = re.search(r'\(([^)]+)\)', suffix)
+                if m_q:
+                    qualifier = m_q.group(1).strip()
+                    suffix = (suffix[:m_q.start()] + suffix[m_q.end():]).strip()
+
+                m_q2 = re.search(r'\(([^)]+)\)', prefix)
+                if m_q2:
+                    if qualifier:
+                        qualifier = f"{m_q2.group(1).strip()}, {qualifier}"
+                    else:
+                        qualifier = m_q2.group(1).strip()
+                    prefix = (prefix[:m_q2.start()] + prefix[m_q2.end():]).strip()
+
+                m_on = re.match(r'^на\s+(передачу|приём|прием)$', suffix)
+                if m_on:
+                    qualifier = ("на " + m_on.group(1)).strip()
+                    suffix = ""
 
                 if prefix and suffix:
                     base = f"{prefix} {suffix}"
@@ -74,6 +92,7 @@ def _try_group(name):
                     "group_id": group["id"],
                     "value": label,
                     "base": base,
+                    "qualifier": qualifier,
                 }
 
     return None
@@ -99,14 +118,13 @@ def build_specs_html(station):
 
     general = []
     grouped = {}
-    group_meta = {}
 
     for spec in specs:
         name = spec["name"]
         answer = spec["answer"]
         unit = spec.get("unit", "").strip()
 
-        parsed = _try_group(name)
+        parsed = _parse_name(name)
 
         if not parsed:
             general.append((name, answer, unit))
@@ -114,18 +132,32 @@ def build_specs_html(station):
             gid = parsed["group_id"]
             val = parsed["value"]
             base = parsed["base"]
+            qualifier = parsed["qualifier"]
 
             if gid not in grouped:
                 grouped[gid] = {}
-                group_meta[gid] = {}
 
             if base not in grouped[gid]:
-                grouped[gid][base] = {}
+                grouped[gid][base] = {
+                    "unit": unit,
+                    "entries": {},
+                }
 
-            grouped[gid][base][val] = (answer, unit)
+            key = qualifier if qualifier else "__no_qual__"
+            if key not in grouped[gid][base]["entries"]:
+                grouped[gid][base]["entries"][key] = {}
+            grouped[gid][base]["entries"][key][val] = answer
 
-            if base not in group_meta[gid]:
-                group_meta[gid][base] = unit
+    all_labels_global = set()
+    for gid, bases in grouped.items():
+        for base, data in bases.items():
+            for key, vals in data["entries"].items():
+                all_labels_global.update(vals.keys())
+
+    sorted_labels_global = sorted(
+        all_labels_global,
+        key=lambda x: _sort_key(list(grouped.keys())[0], x) if grouped else 0
+    )
 
     html = f"""
     <style>
@@ -168,19 +200,24 @@ def build_specs_html(station):
         td.center {{
             text-align: center;
         }}
+        td.parent-row {{
+            background-color: #E8F5E9 !important;
+            font-weight: bold;
+            color: {HEADER_COLOR};
+        }}
+        td.child-row {{
+            padding-left: 30px;
+        }}
     </style>
     <h3>Тактико-технические характеристики</h3>
     <table>
     """
 
     total_cols = 2
-    for gid, bases in grouped.items():
-        labels_count = set()
-        for base, vals in bases.items():
-            labels_count.update(vals.keys())
-        total_cols = max(total_cols, len(labels_count) + 1)
+    if sorted_labels_global:
+        total_cols = len(sorted_labels_global) + 1
 
-    html += f"<tr><th style='width: 35%;'>Характеристика</th>"
+    html += "<tr><th style='width: 35%;'>Характеристика</th>"
     html += f"<th style='width: 65%;' colspan='{total_cols - 1}'>Значение</th></tr>"
 
     for name, ans, u in general:
@@ -190,8 +227,9 @@ def build_specs_html(station):
 
     for gid, bases in grouped.items():
         all_labels = set()
-        for base, vals in bases.items():
-            all_labels.update(vals.keys())
+        for base, data in bases.items():
+            for key, vals in data["entries"].items():
+                all_labels.update(vals.keys())
 
         sorted_labels = sorted(
             all_labels,
@@ -204,17 +242,60 @@ def build_specs_html(station):
             html += f"<th class='group-col'>{label}</th>"
         html += "</tr>"
 
-        for base, vals in bases.items():
-            unit = group_meta[gid].get(base, "")
-            name = f"{base}, {unit}" if unit else base
+        for base, data in bases.items():
+            unit = data["unit"]
+            base_with_unit = f"{base}, {unit}" if unit else base
 
-            html += f"<tr><td>{name}</td>"
-            for label in sorted_labels:
-                if label in vals:
-                    html += f"<td class='center'><b>{vals[label][0]}</b></td>"
-                else:
-                    html += "<td class='center'>—</td>"
-            html += "</tr>"
+            entries = data["entries"]
+            has_only_simple = (
+                len(entries) == 1 and "__no_qual__" in entries
+            )
+
+            if has_only_simple:
+                vals = entries["__no_qual__"]
+                present = [l for l in sorted_labels if l in vals]
+
+                if len(present) == len(sorted_labels):
+                    unique = set(vals[l] for l in present)
+                    if len(unique) == 1:
+                        html += f"<tr><td>{base_with_unit}</td>"
+                        html += f"<td class='center' colspan='{len(sorted_labels)}'><b>{vals[present[0]]}</b></td></tr>"
+                        continue
+
+                html += f"<tr><td>{base_with_unit}</td>"
+                for label in sorted_labels:
+                    if label in vals:
+                        html += f"<td class='center'><b>{vals[label]}</b></td>"
+                    else:
+                        html += "<td class='center'></td>"
+                html += "</tr>"
+            else:
+                simple_vals = entries.get("__no_qual__", {})
+                has_simple = bool(simple_vals)
+
+                html += f"<tr><td class='parent-row' colspan='{len(sorted_labels) + 1}'>{base_with_unit}</td></tr>"
+
+                if has_simple:
+                    html += f"<tr><td class='child-row'></td>"
+                    for label in sorted_labels:
+                        if label in simple_vals:
+                            html += f"<td class='center'><b>{simple_vals[label]}</b></td>"
+                        else:
+                            html += "<td class='center'></td>"
+                    html += "</tr>"
+
+                for key, vals in entries.items():
+                    if key == "__no_qual__":
+                        continue
+
+                    child_name = key if key.startswith("на ") else key
+                    html += f"<tr><td class='child-row'>{child_name}</td>"
+                    for label in sorted_labels:
+                        if label in vals:
+                            html += f"<td class='center'><b>{vals[label]}</b></td>"
+                        else:
+                            html += "<td class='center'></td>"
+                    html += "</tr>"
 
     html += "</table>"
 
