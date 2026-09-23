@@ -1,5 +1,8 @@
 import sys
 import os
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QIcon
 from logic.single_instance import check_single_instance
@@ -8,7 +11,7 @@ from logic.single_instance import check_single_instance
 def resource_path(relative_path):
     if hasattr(sys, "_MEIPASS"):
         return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.abspath("."), relative_path)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
 
 
 def main():

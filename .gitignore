@@ -1,3 +1,7 @@
 results.db
 __pycache__/
 *.pyc
+results.db
+__pycache__/
+*.pyc
+.venv/
