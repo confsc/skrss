@@ -1,6 +1,3 @@
-"""
-Модуль работы с базой данных SQLite.
-"""
 import sqlite3
 import os
 import sys
@@ -10,20 +7,22 @@ from datetime import datetime
 
 def _get_shared_path():
     if hasattr(sys, "_MEIPASS"):
-        shared = os.path.join(sys._MEIPASS, "shared")
-        if os.path.exists(shared):
-            return shared
+        return sys._MEIPASS
     current = os.path.dirname(os.path.abspath(__file__))
     root = os.path.abspath(os.path.join(current, "..", ".."))
     return os.path.join(root, "shared")
 
 
 sys.path.insert(0, _get_shared_path())
-from config import DB_FILENAME  # noqa: E402
+
+try:
+    from config import DB_FILENAME
+except ImportError:
+    DB_FILENAME = "results.db"
 
 
 def _get_db_path():
-    if hasattr(sys, "_MEIPASS"):
+    if getattr(sys, "frozen", False):
         return os.path.join(os.path.dirname(sys.executable), DB_FILENAME)
     current = os.path.dirname(os.path.abspath(__file__))
     root = os.path.abspath(os.path.join(current, "..", ".."))
