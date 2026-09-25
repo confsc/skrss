@@ -26,9 +26,13 @@ def log(msg):
 def _setup_paths():
     if hasattr(sys, "_MEIPASS"):
         base = sys._MEIPASS
-        # PyInstaller кладёт все модули в корень _MEIPASS
-        if base not in sys.path:
-            sys.path.insert(0, base)
+        for p in [base,
+                  os.path.join(base, "shared"),
+                  os.path.join(base, "logic"),
+                  os.path.join(base, "ui"),
+                  os.path.join(base, "data")]:
+            if p not in sys.path:
+                sys.path.insert(0, p)
         log(f"MEIPASS: {base}")
         log(f"Files: {sorted(os.listdir(base))}")
     else:
