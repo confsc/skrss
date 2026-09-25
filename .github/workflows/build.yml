@@ -56,8 +56,14 @@ jobs:
         run: >
           pyinstaller --onefile --windowed
           --name RRSTrainer-Server
-          --add-data "logic;logic"
-          --add-data "ui;ui"
+          --paths "logic"
+          --paths "ui"
+          --paths "../shared"
+          --hidden-import server_api
+          --hidden-import database
+          --hidden-import broadcast
+          --hidden-import main_window
+          --hidden-import config
           --add-data "../shared;shared"
           --add-data "../client/data;data"
           main.py
