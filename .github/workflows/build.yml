@@ -56,17 +56,16 @@ jobs:
         run: >
           pyinstaller --onefile --windowed
           --name RRSTrainer-Server
-          --paths "logic"
-          --paths "ui"
-          --paths "../shared"
-          --hidden-import api
-          --hidden-import database
-          --hidden-import broadcast
-          --hidden-import main_window
-          --hidden-import config
+          --add-data "logic;logic"
+          --add-data "ui;ui"
           --add-data "../shared;shared"
           --add-data "../client/data;data"
           main.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RRSTrainer-Server
+          path: server/dist/RRSTrainer-Server.exe
 
       - uses: actions/upload-artifact@v4
         with:
