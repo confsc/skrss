@@ -1,9 +1,9 @@
 """
-Диалог ввода ФИО и группы курсанта.
+Диалог ввода ФИО, группы и (опционально) IP сервера.
 """
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QMessageBox,
+    QPushButton, QMessageBox, QFrame,
 )
 from PyQt5.QtCore import Qt
 
@@ -21,15 +21,16 @@ class StudentFormDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Вход в режим контроля")
-        self.setFixedSize(550, 380)
+        self.setMinimumSize(580, 600)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         self.fio = ""
         self.group = ""
+        self.manual_ip = ""
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(35, 35, 35, 35)
-        layout.setSpacing(20)
+        layout.setContentsMargins(35, 30, 35, 30)
+        layout.setSpacing(15)
 
         title = QLabel("Введите свои данные")
         title.setAlignment(Qt.AlignCenter)
@@ -48,6 +49,7 @@ class StudentFormDialog(QDialog):
 
         layout.addSpacing(10)
 
+        # ФИО
         fio_label = QLabel("ФИО:")
         fio_label.setStyleSheet(
             f"color: {HEADER_COLOR}; font-size: 15px; font-weight: bold;"
@@ -59,19 +61,16 @@ class StudentFormDialog(QDialog):
         self.fio_input.setMinimumHeight(45)
         self.fio_input.setStyleSheet(f"""
             QLineEdit {{
-                font-size: 15px;
-                padding: 5px 12px;
+                font-size: 15px; padding: 5px 12px;
                 border: 2px solid {LIGHT_ACCENT};
-                border-radius: 8px;
-                background-color: white;
+                border-radius: 8px; background-color: white;
                 color: {TEXT_COLOR};
             }}
-            QLineEdit:focus {{
-                border-color: {ACCENT_HOVER};
-            }}
+            QLineEdit:focus {{ border-color: {ACCENT_HOVER}; }}
         """)
         layout.addWidget(self.fio_input)
 
+        # Группа
         group_label = QLabel("Группа:")
         group_label.setStyleSheet(
             f"color: {HEADER_COLOR}; font-size: 15px; font-weight: bold;"
@@ -83,18 +82,49 @@ class StudentFormDialog(QDialog):
         self.group_input.setMinimumHeight(45)
         self.group_input.setStyleSheet(f"""
             QLineEdit {{
-                font-size: 15px;
-                padding: 5px 12px;
+                font-size: 15px; padding: 5px 12px;
                 border: 2px solid {LIGHT_ACCENT};
-                border-radius: 8px;
-                background-color: white;
+                border-radius: 8px; background-color: white;
                 color: {TEXT_COLOR};
             }}
-            QLineEdit:focus {{
-                border-color: {ACCENT_HOVER};
-            }}
+            QLineEdit:focus {{ border-color: {ACCENT_HOVER}; }}
         """)
         layout.addWidget(self.group_input)
+
+        # Разделитель
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setStyleSheet("color: #DDDDDD;")
+        layout.addWidget(line)
+
+        # IP сервера (опционально)
+        ip_hint = QLabel(
+            "IP-адрес сервера (если не находит автоматически):"
+        )
+        ip_hint.setStyleSheet(
+            f"color: {TEXT_COLOR}; font-size: 13px; font-weight: bold;"
+        )
+        layout.addWidget(ip_hint)
+
+        sub_hint = QLabel(
+            "Оставьте пустым — программа попробует найти сервер сама."
+        )
+        sub_hint.setStyleSheet(f"color: #666666; font-size: 12px;")
+        layout.addWidget(sub_hint)
+
+        self.ip_input = QLineEdit()
+        self.ip_input.setPlaceholderText("Например: 192.168.1.100 (можно с портом)")
+        self.ip_input.setMinimumHeight(45)
+        self.ip_input.setStyleSheet(f"""
+            QLineEdit {{
+                font-size: 15px; padding: 5px 12px;
+                border: 2px solid {LIGHT_ACCENT};
+                border-radius: 8px; background-color: white;
+                color: {TEXT_COLOR};
+            }}
+            QLineEdit:focus {{ border-color: {ACCENT_HOVER}; }}
+        """)
+        layout.addWidget(self.ip_input)
 
         layout.addStretch()
 
@@ -106,12 +136,9 @@ class StudentFormDialog(QDialog):
         ok_btn.setMinimumWidth(180)
         ok_btn.setStyleSheet(f"""
             QPushButton {{
-                font-size: 16px;
-                font-weight: bold;
-                background-color: {ACCENT_COLOR};
-                color: white;
-                border-radius: 10px;
-                border: none;
+                font-size: 16px; font-weight: bold;
+                background-color: {ACCENT_COLOR}; color: white;
+                border-radius: 10px; border: none;
                 padding: 8px 20px;
             }}
             QPushButton:hover {{ background-color: {ACCENT_HOVER}; }}
@@ -124,11 +151,8 @@ class StudentFormDialog(QDialog):
         cancel_btn.setMinimumWidth(150)
         cancel_btn.setStyleSheet("""
             QPushButton {
-                font-size: 16px;
-                background-color: #757575;
-                color: white;
-                border-radius: 10px;
-                border: none;
+                font-size: 16px; background-color: #757575;
+                color: white; border-radius: 10px; border: none;
                 padding: 8px 20px;
             }
             QPushButton:hover { background-color: #616161; }
@@ -140,11 +164,13 @@ class StudentFormDialog(QDialog):
         layout.addLayout(btns)
 
         self.fio_input.returnPressed.connect(self.group_input.setFocus)
-        self.group_input.returnPressed.connect(self.on_ok)
+        self.group_input.returnPressed.connect(self.ip_input.setFocus)
+        self.ip_input.returnPressed.connect(self.on_ok)
 
     def on_ok(self):
         fio = self.fio_input.text().strip()
         group = self.group_input.text().strip()
+        ip = self.ip_input.text().strip()
 
         if not fio or len(fio) < 3:
             QMessageBox.warning(self, "Ошибка", "Введите ФИО полностью.")
@@ -155,4 +181,5 @@ class StudentFormDialog(QDialog):
 
         self.fio = fio
         self.group = group
+        self.manual_ip = ip
         self.accept()
