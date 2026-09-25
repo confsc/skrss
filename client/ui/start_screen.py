@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
 from logic.data_loader import resource_path
-from logic.network import ServerFinder, ApiClient
+from logic.network import ServerFinder, ApiClient, try_direct_ip
 from ui.learning_window import LearningWindow
 from ui.quiz_window import QuizWindow
 from ui.student_form import StudentFormDialog
@@ -136,26 +136,46 @@ class StartScreen(QMainWindow):
 
         self.fio = dialog.fio
         self.group_name = dialog.group
+        manual_ip = dialog.manual_ip
 
-        finder = ServerFinder()
-        found = finder.find()
+        ip = None
+        port = None
 
-        if not found:
+        if manual_ip:
+            result = try_direct_ip(manual_ip)
+            if result:
+                ip, port = result
+            else:
+                QMessageBox.warning(
+                    self, "Сервер недоступен",
+                    f"По адресу «{manual_ip}» сервер не отвечает.\n\n"
+                    "Проверьте IP-адрес и что сервер запущен."
+                )
+                return
+        else:
+            finder = ServerFinder()
+            if finder.find():
+                ip = finder.found_ip
+                port = finder.found_port
+
+        if not ip:
             QMessageBox.warning(
                 self, "Сервер не найден",
-                "Не удалось найти сервер преподавателя.\n\n"
-                "Проверьте, что вы в одной сети с преподавателем.\n"
-                "Попробуйте ещё раз позже."
+                "Не удалось найти сервер автоматически.\n\n"
+                "Попросите преподавателя назвать IP-адрес\n"
+                "(он показан в окне сервера) и введите его\n"
+                "в поле «IP-адрес сервера»."
             )
             return
 
-        self.api_client = ApiClient(finder.found_ip, finder.found_port)
+        self.api_client = ApiClient(ip, port)
 
         if not self.api_client.ping():
             QMessageBox.warning(
                 self, "Сервер недоступен",
-                "Сервер найден, но не отвечает.\n"
-                "Попробуйте ещё раз."
+                f"Сервер найден по адресу {ip}:{port}, но не отвечает.\n\n"
+                "Проверьте, что брандмауэр на компьютере преподавателя\n"
+                "разрешает подключения на порт 5000."
             )
             return
 
