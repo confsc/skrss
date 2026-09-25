@@ -33,8 +33,6 @@ def _setup_paths():
                   os.path.join(base, "data")]:
             if p not in sys.path:
                 sys.path.insert(0, p)
-        log(f"MEIPASS: {base}")
-        log(f"Files: {sorted(os.listdir(base))}")
     else:
         current = os.path.dirname(os.path.abspath(__file__))
         root = os.path.abspath(os.path.join(current, ".."))
@@ -54,6 +52,15 @@ log(f"sys.executable = {sys.executable}")
 _setup_paths()
 
 try:
+    log(f"MEIPASS: {getattr(sys, '_MEIPASS', 'None')}")
+    if hasattr(sys, "_MEIPASS"):
+        log(f"Files: {sorted(os.listdir(sys._MEIPASS))}")
+except Exception as e:
+    log(f"log error: {e}")
+
+# ==== ИМПОРТЫ НА ВЕРХНЕМ УРОВНЕ ====
+# Эти импорты PyInstaller видит и анализирует.
+try:
     from config import SERVER_HOST, SERVER_PORT
     log(f"config: {SERVER_HOST}:{SERVER_PORT}")
 except Exception as e:
@@ -62,11 +69,36 @@ except Exception as e:
     SERVER_HOST = "0.0.0.0"
     SERVER_PORT = 5000
 
+try:
+    from server_api import create_app
+    log("server_api imported")
+except Exception as e:
+    log(f"server_api import error: {e}")
+    log(traceback.format_exc())
+    create_app = None
+
+try:
+    from main_window import ServerWindow
+    log("main_window imported")
+except Exception as e:
+    log(f"main_window import error: {e}")
+    log(traceback.format_exc())
+    ServerWindow = None
+
+try:
+    from PyQt5.QtWidgets import QApplication
+    log("PyQt5 imported")
+except Exception as e:
+    log(f"PyQt5 import error: {e}")
+    log(traceback.format_exc())
+    QApplication = None
+
 
 def run_flask():
+    if create_app is None:
+        log("run_flask: create_app is None, skipping")
+        return
     try:
-        log("run_flask: import api")
-        from api import create_app
         app, _ = create_app()
         log(f"Flask: {SERVER_HOST}:{SERVER_PORT}")
         app.run(host=SERVER_HOST, port=SERVER_PORT,
@@ -77,13 +109,10 @@ def run_flask():
 
 
 def run_ui():
+    if ServerWindow is None or QApplication is None:
+        log("run_ui: dependencies missing, skipping")
+        return
     try:
-        log("run_ui: import PyQt5")
-        from PyQt5.QtWidgets import QApplication
-
-        log("run_ui: import main_window")
-        from main_window import ServerWindow
-
         app = QApplication(sys.argv)
         window = ServerWindow()
         window.show()
