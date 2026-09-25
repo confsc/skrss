@@ -33,7 +33,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: RRSTrainer-Client
+          name: RRSTrainer-Client-${{ github.run_number }}
           path: client/dist/RRSTrainer-Client.exe
 
   build-server:
@@ -64,10 +64,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: RRSTrainer-Server
-          path: server/dist/RRSTrainer-Server.exe
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: RRSTrainer-Server
+          name: RRSTrainer-Server-${{ github.run_number }}
           path: server/dist/RRSTrainer-Server.exe
