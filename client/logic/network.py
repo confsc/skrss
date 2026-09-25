@@ -1,6 +1,5 @@
 """
 Сетевой модуль клиента.
-Все константы ВСТРОЕНЫ — зависимость от shared/ убрана.
 """
 import socket
 import time
@@ -74,6 +73,28 @@ class ServerFinder:
                     pass
 
         return False
+
+
+def try_direct_ip(ip, port=None):
+    if port is None:
+        port = SERVER_PORT
+
+    ip = (ip or "").strip()
+    if not ip:
+        return None
+
+    ip = ip.replace("http://", "").replace("https://", "").strip("/")
+    if ":" in ip:
+        try:
+            ip, p = ip.split(":", 1)
+            port = int(p)
+        except Exception:
+            pass
+
+    api = ApiClient(ip, port)
+    if api.ping():
+        return (ip, port)
+    return None
 
 
 class ApiClient:
