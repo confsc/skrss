@@ -319,4 +319,263 @@ class ServerWindow(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
 
-        top
+        top = QHBoxLayout()
+
+        title = QLabel("Сервер тренажёра")
+        title.setStyleSheet(
+            f"color: {HEADER_COLOR}; font-size: 24px; font-weight: bold;"
+        )
+        top.addWidget(title)
+        top.addStretch()
+
+        self.ip_label = QLabel(
+            f"IP: {self.server_ip}  |  Порт: {self.server_port}  |  "
+            f"Broadcast: 5001"
+        )
+        self.ip_label.setStyleSheet(
+            f"color: {ACCENT_COLOR}; font-size: 14px; font-weight: bold; "
+            f"background-color: #E8F5E9; padding: 10px 15px; border-radius: 8px;"
+        )
+        top.addWidget(self.ip_label)
+
+        layout.addLayout(top)
+
+        controls = QHBoxLayout()
+        controls.setSpacing(10)
+
+        self.start_btn = QPushButton("🚀  Начать летучку")
+        self.start_btn.setMinimumHeight(52)
+        self.start_btn.setMinimumWidth(220)
+        self.start_btn.setStyleSheet(f"""
+            QPushButton {{
+                font-size: 16px; font-weight: bold;
+                background-color: {ACCENT_COLOR}; color: white;
+                border-radius: 10px; padding: 10px 20px; border: none;
+            }}
+            QPushButton:hover {{ background-color: {ACCENT_HOVER}; }}
+        """)
+        self.start_btn.clicked.connect(self.start_quiz)
+        controls.addWidget(self.start_btn)
+
+        self.stop_btn = QPushButton("🛑  Остановить летучку")
+        self.stop_btn.setMinimumHeight(52)
+        self.stop_btn.setMinimumWidth(220)
+        self.stop_btn.setEnabled(False)
+        self.stop_btn.setStyleSheet(f"""
+            QPushButton {{
+                font-size: 16px; font-weight: bold;
+                background-color: {DANGER_COLOR}; color: white;
+                border-radius: 10px; padding: 10px 20px; border: none;
+            }}
+            QPushButton:hover {{ background-color: #7F1D1D; }}
+            QPushButton:disabled {{ background-color: #CCCCCC; color: #777777; }}
+        """)
+        self.stop_btn.clicked.connect(self.stop_quiz)
+        controls.addWidget(self.stop_btn)
+
+        controls.addStretch()
+
+        self.quiz_label = QLabel("Летучка не запущена")
+        self.quiz_label.setStyleSheet(
+            f"color: #6B7280; font-size: 15px; font-weight: bold;"
+        )
+        controls.addWidget(self.quiz_label)
+
+        layout.addLayout(controls)
+
+        self.table = QTableWidget()
+        self.table.setColumnCount(7)
+        self.table.setHorizontalHeaderLabels([
+            "#", "ФИО", "Группа", "Станция", "Время", "Оценка", "Статус"
+        ])
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                font-size: 15px; background-color: white;
+                border: 2px solid {LIGHT_ACCENT};
+                border-radius: 10px; gridline-color: #E0E0E0;
+            }}
+            QTableWidget::item {{ padding: 10px; }}
+            QTableWidget::item:selected {{
+                background-color: {LIGHT_ACCENT}; color: {HEADER_COLOR};
+            }}
+            QHeaderView::section {{
+                background-color: {HEADER_COLOR}; color: white;
+                padding: 12px; font-size: 15px;
+                font-weight: bold; border: none;
+            }}
+            {SCROLLBAR_STYLE}
+        """)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.table.verticalHeader().setVisible(False)
+        self.table.doubleClicked.connect(self.on_row_double_clicked)
+        layout.addWidget(self.table)
+
+        self.stats_label = QLabel("Всего: 0   ✅ 0   🟡 0   ⛔ 0")
+        self.stats_label.setStyleSheet(
+            f"color: {TEXT_COLOR}; font-size: 14px; font-weight: bold; padding: 5px;"
+        )
+        layout.addWidget(self.stats_label)
+
+    def start_quiz(self):
+        active = self.db.get_active_quiz()
+        if active:
+            QMessageBox.warning(
+                self, "Летучка уже идёт",
+                "Сначала остановите текущую летучку."
+            )
+            return
+
+        dialog = StartQuizDialog(self)
+        if dialog.exec_() != QDialog.Accepted:
+            return
+
+        choice = dialog.get_choice()
+        topic = choice["topic"]
+        station_id = choice["station_id"]
+        station_name = choice["station_name"]
+
+        if topic == "single" and not station_id:
+            QMessageBox.warning(self, "Ошибка", "Не выбрана станция.")
+            return
+
+        if topic == "single":
+            stations = _load_stations()
+            station = next((s for s in stations if s["id"] == station_id), None)
+            if station:
+                q_count = _calculate_question_count(len(station["specs"]))
+            else:
+                q_count = QUIZ_MIN_QUESTIONS
+        else:
+            q_count = QUIZ_MIN_QUESTIONS
+
+        self.db.create_quiz(topic, station_id, station_name, q_count)
+        self.stop_btn.setEnabled(True)
+        self.start_btn.setEnabled(False)
+
+        topic_text = {
+            "single": f"Одна станция: {station_name}",
+            "radio": "Все радиорелейные",
+            "satellite": "Все спутниковые",
+            "all": "Все станции",
+        }.get(topic, topic)
+
+        self.quiz_label.setText(f"Летучка: {topic_text}")
+        self.quiz_label.setStyleSheet(
+            f"color: {ACCENT_COLOR}; font-size: 15px; font-weight: bold;"
+        )
+
+        self.refresh_students()
+
+    def stop_quiz(self):
+        active = self.db.get_active_quiz()
+        if not active:
+            return
+        if QMessageBox.question(
+            self, "Остановить летучку",
+            "Все, кто не сдал, будут помечены как «Прервано». Продолжить?",
+            QMessageBox.Yes | QMessageBox.No
+        ) != QMessageBox.Yes:
+            return
+        self.db.stop_quiz(active["id"])
+        self.stop_btn.setEnabled(False)
+        self.start_btn.setEnabled(True)
+        self.quiz_label.setText("Летучка не запущена")
+        self.quiz_label.setStyleSheet(
+            f"color: #6B7280; font-size: 15px; font-weight: bold;"
+        )
+        self.refresh_students()
+
+    def refresh_students(self):
+        active = self.db.get_active_quiz()
+        if not active:
+            self.table.setRowCount(0)
+            self.stats_label.setText("Всего: 0   ✅ 0   🟡 0   ⛔ 0")
+            self.stop_btn.setEnabled(False)
+            self.start_btn.setEnabled(True)
+            return
+
+        self.db.check_timeouts(active["id"], STUDENT_TIMEOUT)
+        students = self.db.get_all_students(active["id"])
+
+        self.table.setRowCount(len(students))
+
+        counter = {"finished": 0, "in_progress": 0, "interrupted": 0, "waiting": 0}
+
+        for i, s in enumerate(students):
+            status = s.get("status", "waiting")
+            counter[status] = counter.get(status, 0) + 1
+
+            self.table.setItem(i, 0, QTableWidgetItem(str(i + 1)))
+            self.table.setItem(i, 1, QTableWidgetItem(s.get("fio", "")))
+            self.table.setItem(i, 2, QTableWidgetItem(s.get("group_name", "")))
+            self.table.setItem(i, 3, QTableWidgetItem(s.get("station_name", "—")))
+
+            duration = s.get("duration", 0)
+            if duration > 0:
+                mins = duration // 60
+                secs = duration % 60
+                time_text = f"{mins:02d}:{secs:02d}"
+            else:
+                time_text = "—"
+            self.table.setItem(i, 4, QTableWidgetItem(time_text))
+
+            percent = s.get("percent", 0)
+            if status == "finished":
+                grade_item = QTableWidgetItem(f"{percent:.1f}%")
+                f = QFont()
+                f.setBold(True)
+                grade_item.setFont(f)
+                grade_item.setForeground(QColor(
+                    ACCENT_COLOR if percent >= GRADE_EXCELLENT
+                    else (WARN_COLOR if percent >= GRADE_SATISFACTORY else DANGER_COLOR)
+                ))
+            else:
+                grade_item = QTableWidgetItem("—")
+            self.table.setItem(i, 5, grade_item)
+
+            status_item = QTableWidgetItem(STATUS_LABELS.get(status, status))
+            f2 = QFont()
+            f2.setBold(True)
+            status_item.setFont(f2)
+            status_item.setForeground(QColor(STATUS_COLORS.get(status, TEXT_COLOR)))
+            self.table.setItem(i, 6, status_item)
+
+        total = len(students)
+        self.stats_label.setText(
+            f"Всего: {total}   "
+            f"✅ Завершили: {counter['finished']}   "
+            f"🟡 В процессе: {counter['in_progress'] + counter['waiting']}   "
+            f"⛔ Прервано: {counter['interrupted']}"
+        )
+
+    def on_row_double_clicked(self, index):
+        row = index.row()
+        fio_item = self.table.item(row, 1)
+        group_item = self.table.item(row, 2)
+        if not fio_item or not group_item:
+            return
+        fio = fio_item.text()
+        group_name = group_item.text()
+        history = self.db.get_student_history(fio, group_name)
+        if not history:
+            QMessageBox.information(
+                self, "История",
+                f"У {fio} пока нет завершённых попыток."
+            )
+            return
+        dialog = HistoryDialog(fio, group_name, history, self)
+        dialog.exec_()
+
+    def closeEvent(self, event):
+        try:
+            self.broadcaster.stop()
+        except Exception:
+            pass
+        try:
+            self.db.close()
+        except Exception:
+            pass
+        event.accept()
