@@ -1,9 +1,6 @@
 """
 Сетевой модуль клиента.
-Отвечает за:
-- поиск сервера через UDP broadcast
-- подключение к API сервера
-- отправку/получение данных
+Все константы ВСТРОЕНЫ — зависимость от shared/ убрана.
 """
 import socket
 import time
@@ -13,22 +10,17 @@ import sys
 import requests
 
 
-def _get_shared_path():
-    if hasattr(sys, "_MEIPASS"):
-        shared = os.path.join(sys._MEIPASS, "shared")
-        if os.path.exists(shared):
-            return shared
-    current = os.path.dirname(os.path.abspath(__file__))
-    root = os.path.abspath(os.path.join(current, "..", ".."))
-    return os.path.join(root, "shared")
+BROADCAST_PORT = 5001
+CLIENT_SEARCH_TIMEOUT = 3
+BROADCAST_MAGIC = "RRS_TRAINER_SERVER"
 
+API_PING = "/api/ping"
+API_QUIZ_INFO = "/api/quiz_info"
+API_START = "/api/start"
+API_FINISH = "/api/finish"
+API_HEARTBEAT = "/api/heartbeat"
 
-sys.path.insert(0, _get_shared_path())
-from config import (  # noqa: E402
-    BROADCAST_PORT, CLIENT_SEARCH_TIMEOUT, BROADCAST_MAGIC,
-    API_START, API_FINISH, API_HEARTBEAT, API_PING, API_QUIZ_INFO,
-    SERVER_PORT,
-)
+SERVER_PORT = 5000
 
 
 class ServerFinder:
