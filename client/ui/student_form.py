@@ -78,7 +78,7 @@ class StudentFormDialog(QDialog):
         layout.addWidget(group_label)
 
         self.group_input = QLineEdit()
-        self.group_input.setPlaceholderText("Например: 21-Б")
+        self.group_input.setPlaceholderText("Например: 142")
         self.group_input.setMinimumHeight(45)
         self.group_input.setStyleSheet(f"""
             QLineEdit {{
