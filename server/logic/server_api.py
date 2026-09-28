@@ -65,6 +65,28 @@ def _calculate_grade(percent):
     return 2
 
 
+def _choose_station_for_quiz(topic, quiz, stations):
+    if topic == "single":
+        return next((s for s in stations if s["id"] == quiz.get("station_id")), None)
+
+    if topic == "radio":
+        pool = [s for s in stations if s["category"] == "radio"]
+        return random.choice(pool) if pool else None
+
+    if topic == "satellite":
+        pool = [s for s in stations if s["category"] == "satellite"]
+        return random.choice(pool) if pool else None
+
+    if topic == "multi":
+        ids = quiz.get("station_ids") or []
+        pool = [s for s in stations if s["id"] in ids]
+        if not pool:
+            pool = stations
+        return random.choice(pool) if pool else None
+
+    return random.choice(stations) if stations else None
+
+
 def create_app():
     app = Flask(__name__)
     db = Database()
@@ -72,8 +94,6 @@ def create_app():
     @app.route(API_PING, methods=["GET"])
     def ping():
         return jsonify({"status": "ok", "server": "RRS_TRAINER"})
-
-    # ---------- Регистрация подключённых ----------
 
     @app.route(API_REGISTER, methods=["POST"])
     def register():
@@ -107,8 +127,6 @@ def create_app():
         db.remove_connection(fio, group_name)
         return jsonify({"status": "ok"})
 
-    # ---------- Контроль ----------
-
     @app.route(API_QUIZ_INFO, methods=["GET"])
     def quiz_info():
         quiz = db.get_active_quiz()
@@ -120,6 +138,7 @@ def create_app():
             "topic": quiz["topic"],
             "station_id": quiz["station_id"],
             "station_name": quiz["station_name"],
+            "station_ids": quiz.get("station_ids", []),
             "question_count": quiz["question_count"],
         })
 
@@ -144,21 +163,10 @@ def create_app():
                             "message": "Вы уже сдали"}), 409
 
         stations = _load_stations()
-        topic = quiz["topic"]
-
-        if topic == "single":
-            station = next((s for s in stations if s["id"] == quiz["station_id"]), None)
-            if not station:
-                return jsonify({"status": "error",
-                                "message": "Станция не найдена"}), 400
-        elif topic == "radio":
-            pool = [s for s in stations if s["category"] == "radio"]
-            station = random.choice(pool)
-        elif topic == "satellite":
-            pool = [s for s in stations if s["category"] == "satellite"]
-            station = random.choice(pool)
-        else:
-            station = random.choice(stations)
+        station = _choose_station_for_quiz(quiz["topic"], quiz, stations)
+        if not station:
+            return jsonify({"status": "error",
+                            "message": "Станция не найдена"}), 400
 
         total_specs = len(station["specs"])
         question_count = _calculate_question_count(total_specs)
