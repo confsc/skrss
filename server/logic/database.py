@@ -107,7 +107,7 @@ class Database:
 
         self.conn.commit()
 
-    # ---------- Летучки ----------
+    # ---------- Контроль ----------
 
     def create_quiz(self, topic, station_id=None, station_name=None, question_count=7):
         cur = self.conn.cursor()
@@ -229,7 +229,7 @@ class Database:
                 )
         self.conn.commit()
 
-    # ---------- Подключённые (до летучки) ----------
+    # ---------- Подключённые (до контроля) ----------
 
     def register_connection(self, fio, group_name, ip=""):
         cur = self.conn.cursor()
@@ -282,6 +282,14 @@ class Database:
                     "DELETE FROM connected_students WHERE id = ?",
                     (r["id"],)
                 )
+        self.conn.commit()
+
+    def remove_connection(self, fio, group_name):
+        cur = self.conn.cursor()
+        cur.execute("""
+            DELETE FROM connected_students
+            WHERE fio = ? AND group_name = ?
+        """, (fio, group_name))
         self.conn.commit()
 
     def clear_connections(self):
