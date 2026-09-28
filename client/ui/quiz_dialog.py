@@ -480,3 +480,21 @@ class QuizDialog(QDialog):
         )
         dialog.exec_()
         self.accept()
+
+    def closeEvent(self, event):
+        if not self.finished and self.api_client and self.fio and self.group_name:
+            try:
+                self.api_client.disconnect(self.fio, self.group_name)
+            except Exception:
+                pass
+        self.stop_all_timers()
+        super().closeEvent(event)
+
+    def reject(self):
+        if not self.finished and self.api_client and self.fio and self.group_name:
+            try:
+                self.api_client.disconnect(self.fio, self.group_name)
+            except Exception:
+                pass
+        self.stop_all_timers()
+        super().reject()
