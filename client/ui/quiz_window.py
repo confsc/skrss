@@ -19,26 +19,16 @@ BG_COLOR = "#FAFAFA"
 
 SCROLLBAR_STYLE = """
 QScrollBar:vertical {
-    background: #F0F0F0;
-    width: 14px;
-    margin: 0px;
+    background: #F0F0F0; width: 14px; margin: 0px;
     border-radius: 7px;
 }
 QScrollBar::handle:vertical {
-    background: #6B8E7B;
-    min-height: 30px;
-    border-radius: 7px;
-    margin: 2px;
+    background: #6B8E7B; min-height: 30px;
+    border-radius: 7px; margin: 2px;
 }
-QScrollBar::handle:vertical:hover {
-    background: #4A6B5A;
-}
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-    height: 0px;
-}
-QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-    background: transparent;
-}
+QScrollBar::handle:vertical:hover { background: #4A6B5A; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
 """
 
 
@@ -61,7 +51,7 @@ class StationListTab(QWidget):
         layout.addWidget(title)
 
         info = QLabel(
-            "Нажмите на станцию, чтобы начать летучку по ней.\n"
+            "Нажмите на станцию, чтобы начать контроль по ней.\n"
             "Сервер выдаст вопросы и примет результат."
         )
         info.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 14px;")
@@ -133,8 +123,8 @@ class StationListTab(QWidget):
     def start_control(self, item):
         QMessageBox.information(
             self, "Внимание",
-            "В режиме летучки станцию выдаёт сервер.\n"
-            "Сейчас будет запущена летучка по этой станции,\n"
+            "В режиме контроля станцию выдаёт сервер.\n"
+            "Сейчас будет запущен контроль по этой станции,\n"
             "если сервер её назначил."
         )
 
@@ -180,7 +170,7 @@ class QuizWindow(QMainWindow):
         layout.addLayout(top)
 
         info_frame = QLabel(
-            "⏳  Сейчас активна летучка от преподавателя.\n"
+            "⏳  Сейчас активен контроль от преподавателя.\n"
             "Станция и вопросы приходят от сервера."
         )
         info_frame.setAlignment(Qt.AlignCenter)
@@ -190,7 +180,7 @@ class QuizWindow(QMainWindow):
         )
         layout.addWidget(info_frame)
 
-        self.start_btn = QPushButton("🚀  Начать летучку")
+        self.start_btn = QPushButton("🚀  Начать контроль")
         self.start_btn.setMinimumHeight(60)
         self.start_btn.setStyleSheet(f"""
             QPushButton {{
@@ -218,14 +208,14 @@ class QuizWindow(QMainWindow):
         if status == 409:
             QMessageBox.warning(
                 self, "Вы уже сдали",
-                data.get("message", "Вы уже сдали летучку.")
+                data.get("message", "Вы уже сдали контроль.")
             )
             return
 
         if status != 200 or data.get("status") != "ok":
             QMessageBox.warning(
                 self, "Ошибка",
-                data.get("message", "Не удалось начать летучку.")
+                data.get("message", "Не удалось начать контроль.")
             )
             return
 
@@ -242,6 +232,8 @@ class QuizWindow(QMainWindow):
             time_limit=data.get("time_limit", 60),
             student_id=data.get("student_id"),
             api_client=self.api_client,
+            fio=self.fio,
+            group_name=self.group_name,
             parent=self,
             is_control=True,
             is_server_mode=True,
@@ -251,5 +243,9 @@ class QuizWindow(QMainWindow):
         self.go_back()
 
     def go_back(self):
+        try:
+            self.api_client.disconnect(self.fio, self.group_name)
+        except Exception:
+            pass
         self.back_callback()
         self.close()
