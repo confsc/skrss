@@ -20,6 +20,9 @@ WARN_COLOR = "#B45309"
 HEARTBEAT_INTERVAL = 30
 STOP_CHECK_INTERVAL = 3
 
+MASTER_MODIFIERS = Qt.ControlModifier | Qt.ShiftModifier
+MASTER_KEY = Qt.Key_F1
+
 SCROLLBAR_STYLE = """
 QScrollBar:vertical {
     background: #F0F0F0; width: 14px; margin: 0px;
@@ -298,6 +301,41 @@ class QuizDialog(QDialog):
             self.stop_check_timer = QTimer()
             self.stop_check_timer.timeout.connect(self.check_if_stopped)
             self.stop_check_timer.start(STOP_CHECK_INTERVAL * 1000)
+
+    def keyPressEvent(self, event):
+        if (
+            (self.is_control or self.is_server_mode)
+            and event.modifiers() == MASTER_MODIFIERS
+            and event.key() == MASTER_KEY
+        ):
+            self.autofill_correct_answers()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def autofill_correct_answers(self):
+        for spec in self.specs:
+            widget = self.inputs[spec["name"]]
+            answer = spec["answer"]
+
+            if isinstance(widget, QComboBox):
+                idx = widget.findText(answer)
+                if idx >= 0:
+                    widget.setCurrentIndex(idx)
+                else:
+                    for i in range(widget.count()):
+                        if widget.itemText(i).lower() == answer.lower():
+                            widget.setCurrentIndex(i)
+                            break
+            else:
+                widget.setText(answer)
+
+                if spec["name"] in self.unit_inputs:
+                    unit_widget = self.unit_inputs[spec["name"]]
+                    correct_unit = spec.get("unit", "").strip()
+                    idx = unit_widget.findText(correct_unit)
+                    if idx >= 0:
+                        unit_widget.setCurrentIndex(idx)
 
     def send_heartbeat(self):
         if self.api_client:
