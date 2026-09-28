@@ -110,7 +110,7 @@ class StartQuizDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Начать летучку")
+        self.setWindowTitle("Начать контроль")
         self.setFixedSize(520, 320)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
@@ -118,7 +118,7 @@ class StartQuizDialog(QDialog):
         layout.setContentsMargins(25, 25, 25, 25)
         layout.setSpacing(15)
 
-        title = QLabel("Выберите тему летучки")
+        title = QLabel("Выберите тему контроля")
         title.setStyleSheet(
             f"color: {HEADER_COLOR}; font-size: 20px; font-weight: bold;"
         )
@@ -365,7 +365,7 @@ class ServerWindow(QMainWindow):
         self.start_btn.clicked.connect(self.start_quiz)
         controls.addWidget(self.start_btn)
 
-        self.stop_btn = QPushButton("🛑  Остановить летучку")
+        self.stop_btn = QPushButton("🛑  Остановить контроль")
         self.stop_btn.setMinimumHeight(52)
         self.stop_btn.setMinimumWidth(220)
         self.stop_btn.setEnabled(False)
@@ -396,7 +396,7 @@ class ServerWindow(QMainWindow):
 
         controls.addStretch()
 
-        self.quiz_label = QLabel("Летучка не запущена")
+        self.quiz_label = QLabel("Контроль не запущен")
         self.quiz_label.setStyleSheet(
             f"color: {GRAY_COLOR}; font-size: 15px; font-weight: bold;"
         )
@@ -453,7 +453,7 @@ class ServerWindow(QMainWindow):
         quiz_layout.setContentsMargins(0, 0, 0, 0)
         quiz_layout.setSpacing(8)
 
-        self.quiz_title = QLabel("Результаты летучки")
+        self.quiz_title = QLabel("Результаты контроля")
         self.quiz_title.setStyleSheet(
             f"color: {HEADER_COLOR}; font-size: 17px; font-weight: bold; padding: 5px;"
         )
@@ -504,8 +504,8 @@ class ServerWindow(QMainWindow):
         active = self.db.get_active_quiz()
         if active:
             QMessageBox.warning(
-                self, "Летучка уже идёт",
-                "Сначала остановите текущую летучку."
+                self, "Контроль уже идёт",
+                "Сначала остановите текущий контроль."
             )
             return
 
@@ -555,7 +555,7 @@ class ServerWindow(QMainWindow):
         if not active:
             return
         if QMessageBox.question(
-            self, "Остановить летучку",
+            self, "Остановить контроль",
             "Все, кто не сдал, будут помечены как «Прервано». Продолжить?",
             QMessageBox.Yes | QMessageBox.No
         ) != QMessageBox.Yes:
@@ -563,7 +563,7 @@ class ServerWindow(QMainWindow):
         self.db.stop_quiz(active["id"])
         self.stop_btn.setEnabled(False)
         self.start_btn.setEnabled(True)
-        self.quiz_label.setText("Летучка не запущена")
+        self.quiz_label.setText("Контроль не запущен")
         self.quiz_label.setStyleSheet(
             f"color: {GRAY_COLOR}; font-size: 15px; font-weight: bold;"
         )
