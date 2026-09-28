@@ -18,6 +18,7 @@ DANGER_COLOR = "#991B1B"
 WARN_COLOR = "#B45309"
 
 HEARTBEAT_INTERVAL = 30
+STOP_CHECK_INTERVAL = 3
 
 SCROLLBAR_STYLE = """
 QScrollBar:vertical {
@@ -70,6 +71,7 @@ class QuizDialog(QDialog):
         self.remaining = time_limit or 0
         self.time_limit = time_limit or 0
         self.finished = False
+        self.forced_stop = False
 
         self.resize(1150, 800)
         self.setMinimumSize(900, 500)
@@ -293,6 +295,10 @@ class QuizDialog(QDialog):
             self.heartbeat_timer.start(HEARTBEAT_INTERVAL * 1000)
             self.send_heartbeat()
 
+            self.stop_check_timer = QTimer()
+            self.stop_check_timer.timeout.connect(self.check_if_stopped)
+            self.stop_check_timer.start(STOP_CHECK_INTERVAL * 1000)
+
     def send_heartbeat(self):
         if self.api_client:
             self.api_client.heartbeat(
@@ -300,6 +306,39 @@ class QuizDialog(QDialog):
                 fio=self.fio,
                 group_name=self.group_name,
             )
+
+    def check_if_stopped(self):
+        if self.finished:
+            return
+        if not self.api_client:
+            return
+
+        try:
+            info = self.api_client.quiz_info()
+        except Exception:
+            return
+
+        if not info.get("active"):
+            self.forced_stop = True
+            self.stop_all_timers()
+            self.finished = True
+
+            QMessageBox.warning(
+                self,
+                "Контроль завершён",
+                "Контроль завершён преподавателем.\n\n"
+                "Работа остановлена."
+            )
+            self.reject()
+
+    def stop_all_timers(self):
+        for timer_name in ["timer", "heartbeat_timer", "stop_check_timer"]:
+            timer = getattr(self, timer_name, None)
+            if timer is not None:
+                try:
+                    timer.stop()
+                except Exception:
+                    pass
 
     def _fmt_time(self, sec):
         m = sec // 60
@@ -337,6 +376,7 @@ class QuizDialog(QDialog):
         if self.finished and not auto:
             return
         self.finished = True
+        self.stop_all_timers()
 
         errors = []
         total_score = 0.0
@@ -391,8 +431,6 @@ class QuizDialog(QDialog):
             self.api_client.finish_quiz(
                 self.student_id, correct_count, total_score, percent, duration
             )
-            if hasattr(self, "heartbeat_timer"):
-                self.heartbeat_timer.stop()
 
         dialog = ResultDialog(
             station_name=self.station.get("name", ""),
