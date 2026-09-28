@@ -121,10 +121,13 @@ def _fmt_time(seconds):
 
 class StartQuizDialog(QDialog):
 
+    SIZE_MULTI = (640, 740)
+    SIZE_SMALL = (520, 320)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Начать контроль")
-        self.setMinimumSize(620, 720)
+        self.setFixedSize(*self.SIZE_MULTI)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         layout = QVBoxLayout(self)
@@ -157,8 +160,13 @@ class StartQuizDialog(QDialog):
         self.topic_combo.currentIndexChanged.connect(self._on_topic_changed)
         layout.addWidget(self.topic_combo)
 
+        self.multi_widget = QWidget()
+        multi_layout = QVBoxLayout(self.multi_widget)
+        multi_layout.setContentsMargins(0, 0, 0, 0)
+        multi_layout.setSpacing(8)
+
         self.stations_label = QLabel("Выберите станции (галочками):")
-        layout.addWidget(self.stations_label)
+        multi_layout.addWidget(self.stations_label)
 
         self.select_all_btn = QPushButton("Выбрать все / Снять все")
         self.select_all_btn.setMinimumHeight(36)
@@ -174,7 +182,7 @@ class StartQuizDialog(QDialog):
             QPushButton:hover {{ background-color: #616161; }}
         """)
         self.select_all_btn.clicked.connect(self._toggle_all)
-        layout.addWidget(self.select_all_btn)
+        multi_layout.addWidget(self.select_all_btn)
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -217,7 +225,7 @@ class StartQuizDialog(QDialog):
             self.list_widget.addItem(item)
 
         self.scroll.setWidget(self.list_widget)
-        layout.addWidget(self.scroll, 1)
+        multi_layout.addWidget(self.scroll, 1)
 
         self.hint = QLabel(
             "Каждому курсанту будет выдана случайная станция из выбранных."
@@ -226,7 +234,11 @@ class StartQuizDialog(QDialog):
             f"color: {GRAY_COLOR}; font-size: 12px; padding: 4px;"
         )
         self.hint.setWordWrap(True)
-        layout.addWidget(self.hint)
+        multi_layout.addWidget(self.hint)
+
+        layout.addWidget(self.multi_widget, 1)
+
+        layout.addStretch()
 
         btns = QDialogButtonBox()
         ok_btn = btns.addButton("Начать", QDialogButtonBox.AcceptRole)
@@ -263,10 +275,13 @@ class StartQuizDialog(QDialog):
     def _on_topic_changed(self):
         topic = self.topic_combo.currentData()
         is_multi = (topic == "multi")
-        self.stations_label.setVisible(is_multi)
-        self.select_all_btn.setVisible(is_multi)
-        self.scroll.setVisible(is_multi)
-        self.hint.setVisible(is_multi)
+
+        self.multi_widget.setVisible(is_multi)
+
+        if is_multi:
+            self.setFixedSize(*self.SIZE_MULTI)
+        else:
+            self.setFixedSize(*self.SIZE_SMALL)
 
     def _toggle_all(self):
         any_unchecked = False
