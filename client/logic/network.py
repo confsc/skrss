@@ -3,7 +3,6 @@
 """
 import socket
 import time
-import json
 import os
 import sys
 import requests
@@ -18,8 +17,11 @@ API_QUIZ_INFO = "/api/quiz_info"
 API_START = "/api/start"
 API_FINISH = "/api/finish"
 API_HEARTBEAT = "/api/heartbeat"
+API_REGISTER = "/api/register"
 
 SERVER_PORT = 5000
+
+NO_PROXY = {"http": None, "https": None}
 
 
 class ServerFinder:
@@ -102,21 +104,44 @@ class ApiClient:
     def __init__(self, ip, port):
         self.base_url = f"http://{ip}:{port}"
         self.timeout = 10
+        self.proxies = NO_PROXY
 
     def ping(self):
         try:
-            r = requests.get(self.base_url + API_PING, timeout=self.timeout)
+            r = requests.get(
+                self.base_url + API_PING,
+                timeout=self.timeout,
+                proxies=self.proxies,
+            )
             return r.json().get("status") == "ok"
-        except Exception:
+        except Exception as e:
+            print(f"[API] ping: {e}")
             return False
 
     def quiz_info(self):
         try:
-            r = requests.get(self.base_url + API_QUIZ_INFO, timeout=self.timeout)
+            r = requests.get(
+                self.base_url + API_QUIZ_INFO,
+                timeout=self.timeout,
+                proxies=self.proxies,
+            )
             return r.json()
         except Exception as e:
             print(f"[API] quiz_info: {e}")
             return {"active": False}
+
+    def register(self, fio, group_name):
+        try:
+            r = requests.post(
+                self.base_url + API_REGISTER,
+                json={"fio": fio, "group": group_name},
+                timeout=self.timeout,
+                proxies=self.proxies,
+            )
+            return r.status_code == 200
+        except Exception as e:
+            print(f"[API] register: {e}")
+            return False
 
     def start_quiz(self, fio, group_name):
         try:
@@ -124,6 +149,7 @@ class ApiClient:
                 self.base_url + API_START,
                 json={"fio": fio, "group": group_name},
                 timeout=self.timeout,
+                proxies=self.proxies,
             )
             return r.status_code, r.json()
         except Exception as e:
@@ -142,18 +168,28 @@ class ApiClient:
                     "duration": duration,
                 },
                 timeout=self.timeout,
+                proxies=self.proxies,
             )
             return r.status_code == 200
         except Exception as e:
             print(f"[API] finish_quiz: {e}")
             return False
 
-    def heartbeat(self, student_id):
+    def heartbeat(self, student_id=None, fio=None, group_name=None):
         try:
+            payload = {}
+            if student_id:
+                payload["student_id"] = student_id
+            if fio:
+                payload["fio"] = fio
+            if group_name:
+                payload["group"] = group_name
+
             requests.post(
                 self.base_url + API_HEARTBEAT,
-                json={"student_id": student_id},
+                json=payload,
                 timeout=self.timeout,
+                proxies=self.proxies,
             )
         except Exception:
             pass
