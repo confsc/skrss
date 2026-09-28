@@ -1,6 +1,10 @@
 """
-Диалог ввода ФИО, группы и (опционально) IP сервера.
+Диалог ввода ФИО, группы и IP сервера.
+С сохранением последних значений.
 """
+import os
+import json
+
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QMessageBox, QFrame,
@@ -16,21 +20,60 @@ BG_COLOR = "#FAFAFA"
 TEXT_COLOR = "#1B1B1B"
 
 
+def _config_dir():
+    base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    path = os.path.join(base, "RRSTrainer")
+    try:
+        os.makedirs(path, exist_ok=True)
+    except Exception:
+        pass
+    return path
+
+
+def _settings_path():
+    return os.path.join(_config_dir(), "settings.json")
+
+
+def load_settings():
+    path = _settings_path()
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_settings(data):
+    path = _settings_path()
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
 class StudentFormDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Вход в режим контроля")
-        self.setMinimumSize(580, 600)
+        self.setMinimumSize(600, 600)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         self.fio = ""
         self.group = ""
         self.manual_ip = ""
 
+        settings = load_settings()
+        last_ip = settings.get("last_ip", "")
+        last_fio = settings.get("last_fio", "")
+        last_group = settings.get("last_group", "")
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(35, 30, 35, 30)
-        layout.setSpacing(15)
+        layout.setSpacing(12)
 
         title = QLabel("Введите свои данные")
         title.setAlignment(Qt.AlignCenter)
@@ -41,15 +84,14 @@ class StudentFormDialog(QDialog):
 
         hint = QLabel(
             "ФИО и группа будут видны преподавателю\n"
-            "во время прохождения летучки."
+            "во время прохождения контроля."
         )
         hint.setAlignment(Qt.AlignCenter)
         hint.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 13px;")
         layout.addWidget(hint)
 
-        layout.addSpacing(10)
+        layout.addSpacing(8)
 
-        # ФИО
         fio_label = QLabel("ФИО:")
         fio_label.setStyleSheet(
             f"color: {HEADER_COLOR}; font-size: 15px; font-weight: bold;"
@@ -58,6 +100,7 @@ class StudentFormDialog(QDialog):
 
         self.fio_input = QLineEdit()
         self.fio_input.setPlaceholderText("Например: Иванов Иван Иванович")
+        self.fio_input.setText(last_fio)
         self.fio_input.setMinimumHeight(45)
         self.fio_input.setStyleSheet(f"""
             QLineEdit {{
@@ -70,7 +113,6 @@ class StudentFormDialog(QDialog):
         """)
         layout.addWidget(self.fio_input)
 
-        # Группа
         group_label = QLabel("Группа:")
         group_label.setStyleSheet(
             f"color: {HEADER_COLOR}; font-size: 15px; font-weight: bold;"
@@ -78,7 +120,8 @@ class StudentFormDialog(QDialog):
         layout.addWidget(group_label)
 
         self.group_input = QLineEdit()
-        self.group_input.setPlaceholderText("Например: 142")
+        self.group_input.setPlaceholderText("Например: 21-Б")
+        self.group_input.setText(last_group)
         self.group_input.setMinimumHeight(45)
         self.group_input.setStyleSheet(f"""
             QLineEdit {{
@@ -91,16 +134,12 @@ class StudentFormDialog(QDialog):
         """)
         layout.addWidget(self.group_input)
 
-        # Разделитель
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
         line.setStyleSheet("color: #DDDDDD;")
         layout.addWidget(line)
 
-        # IP сервера (опционально)
-        ip_hint = QLabel(
-            "IP-адрес сервера (если не находит автоматически):"
-        )
+        ip_hint = QLabel("IP-адрес сервера (если не находит автоматически):")
         ip_hint.setStyleSheet(
             f"color: {TEXT_COLOR}; font-size: 13px; font-weight: bold;"
         )
@@ -109,11 +148,12 @@ class StudentFormDialog(QDialog):
         sub_hint = QLabel(
             "Оставьте пустым — программа попробует найти сервер сама."
         )
-        sub_hint.setStyleSheet(f"color: #666666; font-size: 12px;")
+        sub_hint.setStyleSheet("color: #666666; font-size: 12px;")
         layout.addWidget(sub_hint)
 
         self.ip_input = QLineEdit()
-        self.ip_input.setPlaceholderText("Например: 192.168.1.100 (можно с портом)")
+        self.ip_input.setPlaceholderText("Например: 10.18.1.12")
+        self.ip_input.setText(last_ip)
         self.ip_input.setMinimumHeight(45)
         self.ip_input.setStyleSheet(f"""
             QLineEdit {{
@@ -182,4 +222,11 @@ class StudentFormDialog(QDialog):
         self.fio = fio
         self.group = group
         self.manual_ip = ip
+
+        save_settings({
+            "last_ip": ip,
+            "last_fio": fio,
+            "last_group": group,
+        })
+
         self.accept()
