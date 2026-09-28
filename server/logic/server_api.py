@@ -32,7 +32,7 @@ from config import (  # noqa: E402
     API_START, API_FINISH, API_HEARTBEAT,
     API_RESULTS, API_STUDENTS, API_PING,
     API_QUIZ_INFO, API_STOP_QUIZ,
-    API_REGISTER, API_CONNECTED,
+    API_REGISTER, API_CONNECTED, API_DISCONNECT,
     STUDENT_TIMEOUT, CONNECTION_TIMEOUT,
     QUIZ_MIN_QUESTIONS, QUIZ_MAX_QUESTIONS,
     QUIZ_PERCENT, SCORE_PER_QUESTION,
@@ -94,7 +94,20 @@ def create_app():
         db.cleanup_connections(CONNECTION_TIMEOUT)
         return jsonify({"students": db.get_connected_students()})
 
-    # ---------- Летучка ----------
+    @app.route(API_DISCONNECT, methods=["POST"])
+    def disconnect():
+        data = request.get_json(force=True, silent=True) or {}
+        fio = (data.get("fio") or "").strip()
+        group_name = (data.get("group") or "").strip()
+
+        if not fio or not group_name:
+            return jsonify({"status": "error",
+                            "message": "ФИО и группа обязательны"}), 400
+
+        db.remove_connection(fio, group_name)
+        return jsonify({"status": "ok"})
+
+    # ---------- Контроль ----------
 
     @app.route(API_QUIZ_INFO, methods=["GET"])
     def quiz_info():
@@ -123,7 +136,7 @@ def create_app():
         quiz = db.get_active_quiz()
         if not quiz:
             return jsonify({"status": "error",
-                            "message": "Летучка не запущена"}), 400
+                            "message": "Контроль не запущен"}), 400
 
         existing = db.find_student(quiz["id"], fio, group_name)
         if existing and existing["status"] == "finished":
@@ -267,7 +280,7 @@ def create_app():
         quiz = db.get_active_quiz()
         if not quiz:
             return jsonify({"status": "error",
-                            "message": "Нет активной летучки"}), 400
+                            "message": "Нет активного контроля"}), 400
         db.stop_quiz(quiz["id"])
         return jsonify({"status": "ok"})
 
