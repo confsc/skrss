@@ -2,6 +2,7 @@ import sqlite3
 import os
 import sys
 import time
+import json
 from datetime import datetime
 
 
@@ -39,6 +40,7 @@ class Database:
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self._create_tables()
+        self._migrate()
 
     def _create_tables(self):
         cur = self.conn.cursor()
@@ -49,6 +51,7 @@ class Database:
                 topic TEXT NOT NULL,
                 station_id TEXT,
                 station_name TEXT,
+                station_ids TEXT,
                 question_count INTEGER NOT NULL,
                 started_at TEXT NOT NULL,
                 stopped INTEGER DEFAULT 0
@@ -107,16 +110,32 @@ class Database:
 
         self.conn.commit()
 
+    def _migrate(self):
+        cur = self.conn.cursor()
+        cur.execute("PRAGMA table_info(quiz_sessions)")
+        columns = [row[1] for row in cur.fetchall()]
+
+        if "station_ids" not in columns:
+            try:
+                cur.execute("ALTER TABLE quiz_sessions ADD COLUMN station_ids TEXT")
+                self.conn.commit()
+            except Exception:
+                pass
+
     # ---------- Контроль ----------
 
-    def create_quiz(self, topic, station_id=None, station_name=None, question_count=7):
+    def create_quiz(self, topic, station_id=None, station_name=None,
+                    question_count=7, station_ids=None):
         cur = self.conn.cursor()
+        station_ids_json = json.dumps(station_ids or [], ensure_ascii=False)
         cur.execute("""
             INSERT INTO quiz_sessions
-            (topic, station_id, station_name, question_count, started_at)
-            VALUES (?, ?, ?, ?, ?)
+            (topic, station_id, station_name, station_ids,
+             question_count, started_at)
+            VALUES (?, ?, ?, ?, ?, ?)
         """, (
-            topic, station_id, station_name, question_count,
+            topic, station_id, station_name, station_ids_json,
+            question_count,
             datetime.now().isoformat(timespec="seconds"),
         ))
         self.conn.commit()
@@ -131,7 +150,14 @@ class Database:
             LIMIT 1
         """)
         row = cur.fetchone()
-        return dict(row) if row else None
+        if not row:
+            return None
+        data = dict(row)
+        try:
+            data["station_ids"] = json.loads(data.get("station_ids") or "[]")
+        except Exception:
+            data["station_ids"] = []
+        return data
 
     def stop_quiz(self, quiz_id):
         cur = self.conn.cursor()
@@ -229,7 +255,7 @@ class Database:
                 )
         self.conn.commit()
 
-    # ---------- Подключённые (до контроля) ----------
+    # ---------- Подключённые ----------
 
     def register_connection(self, fio, group_name, ip=""):
         cur = self.conn.cursor()
