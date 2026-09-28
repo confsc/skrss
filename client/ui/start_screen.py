@@ -117,4 +117,76 @@ class StartScreen(QMainWindow):
         super().resizeEvent(event)
         self.update_image()
 
-   
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.update_image()
+        self.api_client = None
+        self.fio = ""
+        self.group_name = ""
+
+    def open_learning(self):
+        self.learning_window = LearningWindow(back_callback=self.show)
+        self.learning_window.show()
+        self.hide()
+
+    def open_quiz(self):
+        dialog = StudentFormDialog(self)
+        if dialog.exec_() != StudentFormDialog.Accepted:
+            return
+
+        self.fio = dialog.fio
+        self.group_name = dialog.group
+        manual_ip = dialog.manual_ip
+
+        ip = None
+        port = None
+
+        if manual_ip:
+            result = try_direct_ip(manual_ip)
+            if result:
+                ip, port = result
+            else:
+                QMessageBox.warning(
+                    self, "Сервер недоступен",
+                    f"По адресу «{manual_ip}» сервер не отвечает.\n\n"
+                    "Проверьте IP-адрес и что сервер запущен."
+                )
+                return
+        else:
+            finder = ServerFinder()
+            if finder.find():
+                ip = finder.found_ip
+                port = finder.found_port
+
+        if not ip:
+            QMessageBox.warning(
+                self, "Сервер не найден",
+                "Не удалось найти сервер автоматически.\n\n"
+                "Попросите преподавателя назвать IP-адрес\n"
+                "и введите его в поле «IP-адрес сервера»."
+            )
+            return
+
+        self.api_client = ApiClient(ip, port)
+
+        if not self.api_client.ping():
+            QMessageBox.warning(
+                self, "Сервер недоступен",
+                f"Сервер найден по адресу {ip}:{port}, но не отвечает."
+            )
+            return
+
+        waiting = WaitingDialog(self.api_client, self.fio, self.group_name, self)
+        result = waiting.exec_()
+
+        if result != WaitingDialog.Accepted or not waiting.result:
+            return
+
+        self.quiz_window = QuizWindow(
+            back_callback=self.show,
+            api_client=self.api_client,
+            fio=self.fio,
+            group_name=self.group_name,
+        )
+        self.quiz_window.show()
+        self.hide()
