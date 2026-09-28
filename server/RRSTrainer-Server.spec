@@ -11,6 +11,7 @@ logic_dir = os.path.join(server_dir, 'logic')
 ui_dir = os.path.join(server_dir, 'ui')
 shared_dir = os.path.join(project_root, 'shared')
 client_data_dir = os.path.join(project_root, 'client', 'data')
+icon_path = os.path.join(server_dir, 'icon.ico')
 
 pathex = [
     logic_dir,
@@ -84,6 +85,7 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
+    icon=icon_path if os.path.exists(icon_path) else None,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
