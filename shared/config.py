@@ -16,6 +16,7 @@ API_STUDENTS = "/api/students"
 API_STOP_QUIZ = "/api/stop_quiz"
 API_REGISTER = "/api/register"
 API_CONNECTED = "/api/connected"
+API_DISCONNECT = "/api/disconnect"
 
 DB_FILENAME = "results.db"
 
