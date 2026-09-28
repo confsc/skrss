@@ -39,6 +39,16 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: trans
 """
 
 
+def _percent_to_grade(percent):
+    if percent >= 90:
+        return 5
+    if percent >= 70:
+        return 4
+    if percent >= 50:
+        return 3
+    return 2
+
+
 class QuizDialog(QDialog):
 
     def __init__(self, station=None, parent=None,
@@ -55,6 +65,8 @@ class QuizDialog(QDialog):
         self.student_id = student_id
         self.fio = fio
         self.group_name = group_name
+
+        self.result_data = None
 
         if is_server_mode:
             self.station = {"id": station_id, "name": station_name, "specs": specs}
@@ -368,8 +380,7 @@ class QuizDialog(QDialog):
                 QMessageBox.warning(
                     self,
                     "Сервер недоступен",
-                    "Связь с сервером потеряна.\n\n"
-                    "Работа остановлена."
+                    "Связь с сервером потеряна.\n\nРабота остановлена."
                 )
                 self.reject()
 
@@ -392,8 +403,7 @@ class QuizDialog(QDialog):
             QMessageBox.warning(
                 self,
                 "Контроль завершён",
-                "Контроль завершён преподавателем.\n\n"
-                "Работа остановлена."
+                "Контроль завершён преподавателем.\n\nРабота остановлена."
             )
             self.reject()
 
@@ -493,6 +503,15 @@ class QuizDialog(QDialog):
                 )
 
         percent = (total_score / max_score * 100) if max_score > 0 else 0
+        grade = _percent_to_grade(percent)
+
+        self.result_data = {
+            "correct_count": correct_count,
+            "total": len(self.specs),
+            "percent": percent,
+            "grade": grade,
+            "errors": errors,
+        }
 
         if self.is_server_mode and self.api_client and self.student_id:
             duration = self.time_limit - max(0, self.remaining)
