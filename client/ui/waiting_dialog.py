@@ -1,4 +1,7 @@
-
+"""
+Окно ожидания контроля.
+Показывается, пока преподаватель не запустит контроль.
+"""
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
 )
@@ -83,15 +86,12 @@ class WaitingDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         layout.addWidget(cancel_btn, alignment=Qt.AlignCenter)
 
-        # Регистрируемся на сервере сразу
         self.api_client.register(self.fio, self.group_name)
 
-        # Таймер проверки летучки (каждые 2 сек)
         self.timer = QTimer()
         self.timer.timeout.connect(self.check_quiz)
         self.timer.start(2000)
 
-        # Таймер heartbeat (каждые 30 сек)
         self.heartbeat_timer = QTimer()
         self.heartbeat_timer.timeout.connect(self.send_heartbeat)
         self.heartbeat_timer.start(HEARTBEAT_INTERVAL * 1000)
@@ -111,8 +111,24 @@ class WaitingDialog(QDialog):
 
     def closeEvent(self, event):
         try:
+            self.api_client.disconnect(self.fio, self.group_name)
+        except Exception:
+            pass
+        try:
             self.timer.stop()
             self.heartbeat_timer.stop()
         except Exception:
             pass
         super().closeEvent(event)
+
+    def reject(self):
+        try:
+            self.api_client.disconnect(self.fio, self.group_name)
+        except Exception:
+            pass
+        try:
+            self.timer.stop()
+            self.heartbeat_timer.stop()
+        except Exception:
+            pass
+        super().reject()
