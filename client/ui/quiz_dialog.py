@@ -39,8 +39,8 @@ class QuizDialog(QDialog):
     def __init__(self, station=None, parent=None,
                  station_id=None, station_name=None,
                  specs=None, time_limit=None, student_id=None,
-                 api_client=None, is_control=False,
-                 is_server_mode=False):
+                 api_client=None, fio=None, group_name=None,
+                 is_control=False, is_server_mode=False):
 
         super().__init__(parent)
 
@@ -48,6 +48,8 @@ class QuizDialog(QDialog):
         self.is_server_mode = is_server_mode
         self.api_client = api_client
         self.student_id = student_id
+        self.fio = fio
+        self.group_name = group_name
 
         if is_server_mode:
             self.station = {"id": station_id, "name": station_name, "specs": specs}
@@ -285,15 +287,19 @@ class QuizDialog(QDialog):
             self.timer.timeout.connect(self.tick)
             self.timer.start(1000)
 
-        if is_server_mode and self.api_client and self.student_id:
+        if is_server_mode and self.api_client:
             self.heartbeat_timer = QTimer()
             self.heartbeat_timer.timeout.connect(self.send_heartbeat)
             self.heartbeat_timer.start(HEARTBEAT_INTERVAL * 1000)
             self.send_heartbeat()
 
     def send_heartbeat(self):
-        if self.api_client and self.student_id:
-            self.api_client.heartbeat(self.student_id)
+        if self.api_client:
+            self.api_client.heartbeat(
+                student_id=self.student_id,
+                fio=self.fio,
+                group_name=self.group_name,
+            )
 
     def _fmt_time(self, sec):
         m = sec // 60
