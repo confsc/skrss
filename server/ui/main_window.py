@@ -351,7 +351,7 @@ class ServerWindow(QMainWindow):
         controls = QHBoxLayout()
         controls.setSpacing(10)
 
-        self.start_btn = QPushButton("🚀  Начать летучку")
+        self.start_btn = QPushButton("🚀  Начать контроль")
         self.start_btn.setMinimumHeight(52)
         self.start_btn.setMinimumWidth(220)
         self.start_btn.setStyleSheet(f"""
@@ -543,7 +543,7 @@ class ServerWindow(QMainWindow):
             "all": "Все станции",
         }.get(topic, topic)
 
-        self.quiz_label.setText(f"Летучка: {topic_text}")
+        self.quiz_label.setText(f"Контроль: {topic_text}")
         self.quiz_label.setStyleSheet(
             f"color: {ACCENT_COLOR}; font-size: 15px; font-weight: bold;"
         )
