@@ -143,16 +143,6 @@ class StationListWidget(QWidget):
         """)
         right_layout.addWidget(self.info_text, 4)
 
-        self.hint_label = QLabel(
-            "⚠ Для зачёта станции нужна оценка <b>5</b> (≥ 90%)."
-        )
-        self.hint_label.setTextFormat(Qt.RichText)
-        self.hint_label.setStyleSheet(
-            f"color: {WARN_COLOR}; font-size: 13px; font-weight: bold; "
-            f"padding: 6px; background-color: #FFF9C4; border-radius: 6px;"
-        )
-        right_layout.addWidget(self.hint_label)
-
         self.study_button = QPushButton("Пройти входной контроль")
         self.study_button.setEnabled(False)
         self.study_button.setMinimumHeight(50)
