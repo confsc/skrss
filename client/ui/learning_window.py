@@ -16,6 +16,7 @@ HEADER_COLOR = "#1B4332"
 ACCENT_COLOR = "#2D6A4F"
 ACCENT_HOVER = "#40916C"
 LIGHT_ACCENT = "#95D5B2"
+WARN_COLOR = "#B45309"
 
 SCROLLBAR_STYLE = """
 QScrollBar:vertical {
@@ -78,18 +79,26 @@ class StationListWidget(QWidget):
         self.list_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.list_widget.setStyleSheet(f"""
             QListWidget {{
-                font-size: 16px; background-color: white;
-                border: 2px solid {LIGHT_ACCENT}; border-radius: 8px;
-                padding: 5px; color: {TEXT_COLOR}; outline: none;
+                font-size: 16px;
+                background-color: white;
+                border: 2px solid {LIGHT_ACCENT};
+                border-radius: 8px;
+                padding: 5px;
+                color: {TEXT_COLOR};
+                outline: none;
             }}
             QListWidget::item {{
                 padding: 10px 12px;
-                border-bottom: 1px solid #E0E0E0; outline: none;
+                border-bottom: 1px solid #E0E0E0;
+                outline: none;
             }}
             QListWidget::item:selected {{
-                background-color: {LIGHT_ACCENT}; color: {HEADER_COLOR};
-                font-weight: bold; border-radius: 5px;
-                border: none; outline: none;
+                background-color: {LIGHT_ACCENT};
+                color: {HEADER_COLOR};
+                font-weight: bold;
+                border-radius: 5px;
+                border: none;
+                outline: none;
             }}
             QListWidget::item:hover {{ background-color: #E8F5E9; }}
             {SCROLLBAR_STYLE}
@@ -123,13 +132,26 @@ class StationListWidget(QWidget):
         self.info_text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.info_text.setStyleSheet(f"""
             QTextEdit {{
-                font-size: 15px; background-color: white;
-                border: none; border-radius: 8px;
-                padding: 15px; color: {TEXT_COLOR};
+                font-size: 15px;
+                background-color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 15px;
+                color: {TEXT_COLOR};
             }}
             {SCROLLBAR_STYLE}
         """)
         right_layout.addWidget(self.info_text, 4)
+
+        self.hint_label = QLabel(
+            "⚠ Для зачёта станции нужна оценка <b>5</b> (≥ 90%)."
+        )
+        self.hint_label.setTextFormat(Qt.RichText)
+        self.hint_label.setStyleSheet(
+            f"color: {WARN_COLOR}; font-size: 13px; font-weight: bold; "
+            f"padding: 6px; background-color: #FFF9C4; border-radius: 6px;"
+        )
+        right_layout.addWidget(self.hint_label)
 
         self.study_button = QPushButton("Пройти входной контроль")
         self.study_button.setEnabled(False)
@@ -137,9 +159,13 @@ class StationListWidget(QWidget):
         self.study_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.study_button.setStyleSheet(f"""
             QPushButton {{
-                font-size: 17px; font-weight: bold;
-                background-color: {ACCENT_COLOR}; color: white;
-                border-radius: 10px; padding: 10px 20px; border: none;
+                font-size: 17px;
+                font-weight: bold;
+                background-color: {ACCENT_COLOR};
+                color: white;
+                border-radius: 10px;
+                padding: 10px 20px;
+                border: none;
             }}
             QPushButton:hover {{ background-color: {ACCENT_HOVER}; }}
             QPushButton:disabled {{ background-color: #CCCCCC; color: #777777; }}
@@ -197,13 +223,18 @@ class StationListWidget(QWidget):
         html = f"""
         <style>
             h3 {{
-                color: {HEADER_COLOR}; font-size: 18px;
-                margin-top: 10px; margin-bottom: 8px;
-                border-bottom: 2px solid {LIGHT_ACCENT}; padding-bottom: 5px;
+                color: {HEADER_COLOR};
+                font-size: 18px;
+                margin-top: 10px;
+                margin-bottom: 8px;
+                border-bottom: 2px solid {LIGHT_ACCENT};
+                padding-bottom: 5px;
             }}
             p {{
-                color: {TEXT_COLOR}; font-size: 15px;
-                line-height: 1.5; margin: 5px 0;
+                color: {TEXT_COLOR};
+                font-size: 15px;
+                line-height: 1.5;
+                margin: 5px 0;
             }}
         </style>
         <h3>Назначение</h3>
@@ -233,12 +264,35 @@ class StationListWidget(QWidget):
             parent=self,
             is_control=False,
         )
-        if dialog.exec_() == QuizDialog.Accepted:
+        result = dialog.exec_()
+
+        if result != QuizDialog.Accepted:
+            return
+
+        data = dialog.result_data or {}
+        grade = data.get("grade", 0)
+        percent = data.get("percent", 0)
+        correct = data.get("correct_count", 0)
+        total = data.get("total", 0)
+
+        if grade == 5:
             self.studied.add(self.current_station["id"])
             self.refresh_list()
             QMessageBox.information(
-                self, "Отлично!",
-                f"Станция «{self.current_station['name']}» отмечена как изученная."
+                self,
+                "Отлично!",
+                f"Станция «{self.current_station['name']}» зачтена.\n\n"
+                f"Оценка: 5 ({percent:.1f}%)\n"
+                f"Правильных: {correct} из {total}"
+            )
+        else:
+            QMessageBox.warning(
+                self,
+                "Не зачтено",
+                f"Для зачёта нужна оценка 5 (≥ 90%).\n\n"
+                f"Ваша оценка: {grade} ({percent:.1f}%)\n"
+                f"Правильных: {correct} из {total}\n\n"
+                f"Повторите обучение и попробуйте снова."
             )
 
 
@@ -265,9 +319,12 @@ class LearningWindow(QMainWindow):
         back_btn.setMinimumHeight(44)
         back_btn.setStyleSheet(f"""
             QPushButton {{
-                font-size: 15px; background-color: {ACCENT_HOVER};
-                color: white; border-radius: 8px;
-                padding: 8px 20px; border: none;
+                font-size: 15px;
+                background-color: {ACCENT_HOVER};
+                color: white;
+                border-radius: 8px;
+                padding: 8px 20px;
+                border: none;
             }}
             QPushButton:hover {{ background-color: {ACCENT_COLOR}; }}
         """)
@@ -280,20 +337,27 @@ class LearningWindow(QMainWindow):
         self.tabs.setStyleSheet(f"""
             QTabWidget::pane {{
                 border: 2px solid {LIGHT_ACCENT};
-                border-radius: 8px; background-color: {BG_COLOR};
+                border-radius: 8px;
+                background-color: {BG_COLOR};
                 top: -1px;
             }}
             QTabBar {{ background-color: transparent; }}
             QTabBar::tab {{
-                background-color: #E8F5E9; color: {TEXT_COLOR};
-                padding: 12px 28px; font-size: 15px; font-weight: bold;
-                min-width: 220px; min-height: 22px;
+                background-color: #E8F5E9;
+                color: {TEXT_COLOR};
+                padding: 12px 28px;
+                font-size: 15px;
+                font-weight: bold;
+                min-width: 220px;
+                min-height: 22px;
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
-                margin-right: 3px; margin-top: 0px;
+                margin-right: 3px;
+                margin-top: 0px;
             }}
             QTabBar::tab:selected {{
-                background-color: {ACCENT_COLOR}; color: white;
+                background-color: {ACCENT_COLOR};
+                color: white;
             }}
             QTabBar::tab:hover {{ background-color: {LIGHT_ACCENT}; }}
         """)
