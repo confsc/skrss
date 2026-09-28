@@ -6,26 +6,25 @@ CLIENT_SEARCH_TIMEOUT = 3
 
 BROADCAST_MAGIC = "RRS_TRAINER_SERVER"
 
+API_PING = "/api/ping"
+API_QUIZ_INFO = "/api/quiz_info"
 API_START = "/api/start"
 API_FINISH = "/api/finish"
 API_HEARTBEAT = "/api/heartbeat"
 API_RESULTS = "/api/results"
 API_STUDENTS = "/api/students"
-API_PING = "/api/ping"
-API_QUIZ_INFO = "/api/quiz_info"
 API_STOP_QUIZ = "/api/stop_quiz"
+API_REGISTER = "/api/register"
+API_CONNECTED = "/api/connected"
 
 DB_FILENAME = "results.db"
 
 HEARTBEAT_INTERVAL = 30
 STUDENT_TIMEOUT = 60
+CONNECTION_TIMEOUT = 60
 
 SCORE_PER_QUESTION = 45
 
-GRADE_EXCELLENT = 85
-GRADE_GOOD = 70
-GRADE_SATISFACTORY = 60
-
-QUIZ_MIN_QUESTIONS = 7
-QUIZ_MAX_QUESTIONS = 15
-QUIZ_PERCENT = 0.7
+GRADE_5 = 90
+GRADE_4 = 70
+GRADE_3 = 50
