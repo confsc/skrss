@@ -19,6 +19,7 @@ WARN_COLOR = "#B45309"
 
 HEARTBEAT_INTERVAL = 30
 STOP_CHECK_INTERVAL = 3
+SERVER_CHECK_INTERVAL = 5
 
 MASTER_MODIFIERS = Qt.ControlModifier | Qt.ShiftModifier
 MASTER_KEY = Qt.Key_F1
@@ -75,6 +76,7 @@ class QuizDialog(QDialog):
         self.time_limit = time_limit or 0
         self.finished = False
         self.forced_stop = False
+        self.fail_count = 0
 
         self.resize(1150, 800)
         self.setMinimumSize(900, 500)
@@ -302,6 +304,10 @@ class QuizDialog(QDialog):
             self.stop_check_timer.timeout.connect(self.check_if_stopped)
             self.stop_check_timer.start(STOP_CHECK_INTERVAL * 1000)
 
+            self.server_check_timer = QTimer()
+            self.server_check_timer.timeout.connect(self.check_server)
+            self.server_check_timer.start(SERVER_CHECK_INTERVAL * 1000)
+
     def keyPressEvent(self, event):
         if (
             (self.is_control or self.is_server_mode)
@@ -345,6 +351,28 @@ class QuizDialog(QDialog):
                 group_name=self.group_name,
             )
 
+    def check_server(self):
+        if self.finished:
+            return
+        if not self.api_client:
+            return
+
+        if self.api_client.ping():
+            self.fail_count = 0
+        else:
+            self.fail_count += 1
+            if self.fail_count >= 3:
+                self.forced_stop = True
+                self.stop_all_timers()
+                self.finished = True
+                QMessageBox.warning(
+                    self,
+                    "Сервер недоступен",
+                    "Связь с сервером потеряна.\n\n"
+                    "Работа остановлена."
+                )
+                self.reject()
+
     def check_if_stopped(self):
         if self.finished:
             return
@@ -370,11 +398,13 @@ class QuizDialog(QDialog):
             self.reject()
 
     def stop_all_timers(self):
-        for timer_name in ["timer", "heartbeat_timer", "stop_check_timer"]:
-            timer = getattr(self, timer_name, None)
-            if timer is not None:
+        for name in [
+            "timer", "heartbeat_timer", "stop_check_timer", "server_check_timer"
+        ]:
+            t = getattr(self, name, None)
+            if t is not None:
                 try:
-                    timer.stop()
+                    t.stop()
                 except Exception:
                     pass
 
