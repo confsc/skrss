@@ -68,6 +68,7 @@ class Database:
                 correct_count INTEGER DEFAULT 0,
                 score REAL DEFAULT 0,
                 percent REAL DEFAULT 0,
+                grade INTEGER DEFAULT 0,
                 started_at TEXT,
                 finished_at TEXT,
                 duration INTEGER DEFAULT 0,
@@ -87,8 +88,20 @@ class Database:
                 percent REAL,
                 correct_count INTEGER,
                 question_count INTEGER,
+                grade INTEGER,
                 duration INTEGER,
                 finished_at TEXT
+            )
+        """)
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS connected_students (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fio TEXT NOT NULL,
+                group_name TEXT NOT NULL,
+                ip TEXT,
+                connected_at TEXT NOT NULL,
+                last_heartbeat REAL DEFAULT 0
             )
         """)
 
@@ -103,10 +116,7 @@ class Database:
             (topic, station_id, station_name, question_count, started_at)
             VALUES (?, ?, ?, ?, ?)
         """, (
-            topic,
-            station_id,
-            station_name,
-            question_count,
+            topic, station_id, station_name, question_count,
             datetime.now().isoformat(timespec="seconds"),
         ))
         self.conn.commit()
@@ -165,27 +175,21 @@ class Database:
                 question_count = ?, started_at = ?, last_heartbeat = ?
             WHERE id = ?
         """, (
-            station_id,
-            station_name,
-            question_count,
+            station_id, station_name, question_count,
             datetime.now().isoformat(timespec="seconds"),
-            time.time(),
-            student_id,
+            time.time(), student_id,
         ))
         self.conn.commit()
 
-    def update_student_finish(self, student_id, correct_count, score, percent, duration):
+    def update_student_finish(self, student_id, correct_count, score, percent, grade, duration):
         cur = self.conn.cursor()
         cur.execute("""
             UPDATE students
             SET status = 'finished', correct_count = ?, score = ?,
-                percent = ?, duration = ?, finished_at = ?
+                percent = ?, grade = ?, duration = ?, finished_at = ?
             WHERE id = ?
         """, (
-            correct_count,
-            score,
-            percent,
-            duration,
+            correct_count, score, percent, grade, duration,
             datetime.now().isoformat(timespec="seconds"),
             student_id,
         ))
@@ -225,26 +229,81 @@ class Database:
                 )
         self.conn.commit()
 
+    # ---------- Подключённые (до летучки) ----------
+
+    def register_connection(self, fio, group_name, ip=""):
+        cur = self.conn.cursor()
+        cur.execute("""
+            SELECT * FROM connected_students
+            WHERE fio = ? AND group_name = ?
+            ORDER BY id DESC LIMIT 1
+        """, (fio, group_name))
+        row = cur.fetchone()
+
+        now = time.time()
+        if row:
+            cur.execute("""
+                UPDATE connected_students
+                SET last_heartbeat = ?, ip = ?
+                WHERE id = ?
+            """, (now, ip, row["id"]))
+            self.conn.commit()
+            return row["id"]
+        else:
+            cur.execute("""
+                INSERT INTO connected_students
+                (fio, group_name, ip, connected_at, last_heartbeat)
+                VALUES (?, ?, ?, ?, ?)
+            """, (
+                fio, group_name, ip,
+                datetime.now().isoformat(timespec="seconds"),
+                now,
+            ))
+            self.conn.commit()
+            return cur.lastrowid
+
+    def get_connected_students(self):
+        cur = self.conn.cursor()
+        cur.execute("""
+            SELECT * FROM connected_students
+            ORDER BY id
+        """)
+        return [dict(row) for row in cur.fetchall()]
+
+    def cleanup_connections(self, timeout_seconds):
+        now = time.time()
+        cur = self.conn.cursor()
+        cur.execute("SELECT * FROM connected_students")
+        rows = [dict(r) for r in cur.fetchall()]
+        for r in rows:
+            last = r.get("last_heartbeat") or 0
+            if now - last > timeout_seconds:
+                cur.execute(
+                    "DELETE FROM connected_students WHERE id = ?",
+                    (r["id"],)
+                )
+        self.conn.commit()
+
+    def clear_connections(self):
+        cur = self.conn.cursor()
+        cur.execute("DELETE FROM connected_students")
+        self.conn.commit()
+
     # ---------- История ----------
 
     def save_attempt(self, fio, group_name, station_id, station_name,
-                     score, percent, correct_count, question_count, duration):
+                     score, percent, correct_count, question_count,
+                     grade, duration):
         cur = self.conn.cursor()
         cur.execute("""
             INSERT INTO attempts
             (fio, group_name, station_id, station_name, score, percent,
-             correct_count, question_count, duration, finished_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             correct_count, question_count, grade, duration, finished_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            fio,
-            group_name,
-            station_id,
-            station_name,
-            score,
-            percent,
-            correct_count,
-            question_count,
-            duration,
+            fio, group_name, station_id, station_name,
+            score, percent, correct_count, question_count,
+            grade, duration,
             datetime.now().isoformat(timespec="seconds"),
         ))
         self.conn.commit()
