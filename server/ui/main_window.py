@@ -7,7 +7,8 @@ from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
     QMessageBox, QComboBox, QDialog, QDialogButtonBox, QAbstractItemView,
-    QSizePolicy, QSplitter, QLineEdit,
+    QSizePolicy, QSplitter, QLineEdit, QListWidget, QListWidgetItem,
+    QScrollArea,
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QColor
@@ -123,12 +124,12 @@ class StartQuizDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Начать контроль")
-        self.setFixedSize(520, 320)
+        self.setMinimumSize(620, 720)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(25, 25, 25, 25)
-        layout.setSpacing(15)
+        layout.setSpacing(12)
 
         title = QLabel("Выберите тему контроля")
         title.setStyleSheet(
@@ -139,34 +140,69 @@ class StartQuizDialog(QDialog):
         layout.addWidget(QLabel("Тема:"))
 
         self.topic_combo = QComboBox()
-        self.topic_combo.addItem("Одна станция", "single")
+        self.topic_combo.addItem("Несколько станций (случайно)", "multi")
         self.topic_combo.addItem("Все радиорелейные", "radio")
         self.topic_combo.addItem("Все спутниковые", "satellite")
         self.topic_combo.addItem("Все станции", "all")
         self.topic_combo.setMinimumHeight(40)
         self.topic_combo.setStyleSheet(f"""
             QComboBox {{
-                font-size: 15px; padding: 5px 10px;
+                font-size: 15px;
+                padding: 5px 10px;
                 border: 2px solid {LIGHT_ACCENT};
-                border-radius: 6px; background-color: white;
+                border-radius: 6px;
+                background-color: white;
             }}
         """)
         self.topic_combo.currentIndexChanged.connect(self._on_topic_changed)
         layout.addWidget(self.topic_combo)
 
-        self.station_label = QLabel("Станция:")
-        layout.addWidget(self.station_label)
+        self.stations_label = QLabel("Выберите станции (галочками):")
+        layout.addWidget(self.stations_label)
 
-        self.station_combo = QComboBox()
-        self.station_combo.setMinimumHeight(40)
-        self.station_combo.setStyleSheet(f"""
-            QComboBox {{
-                font-size: 15px; padding: 5px 10px;
+        self.select_all_btn = QPushButton("Выбрать все / Снять все")
+        self.select_all_btn.setMinimumHeight(36)
+        self.select_all_btn.setStyleSheet(f"""
+            QPushButton {{
+                font-size: 13px;
+                background-color: #757575;
+                color: white;
+                border-radius: 6px;
+                padding: 6px 12px;
+                border: none;
+            }}
+            QPushButton:hover {{ background-color: #616161; }}
+        """)
+        self.select_all_btn.clicked.connect(self._toggle_all)
+        layout.addWidget(self.select_all_btn)
+
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setStyleSheet(f"""
+            QScrollArea {{
                 border: 2px solid {LIGHT_ACCENT};
-                border-radius: 6px; background-color: white;
+                border-radius: 8px;
+                background-color: white;
+            }}
+            {SCROLLBAR_STYLE}
+        """)
+
+        self.list_widget = QListWidget()
+        self.list_widget.setStyleSheet(f"""
+            QListWidget {{
+                font-size: 14px;
+                background-color: white;
+                border: none;
+                padding: 5px;
+            }}
+            QListWidget::item {{
+                padding: 6px;
+            }}
+            QListWidget::item:selected {{
+                background-color: {LIGHT_ACCENT};
+                color: {HEADER_COLOR};
             }}
         """)
-        layout.addWidget(self.station_combo)
 
         try:
             self.stations = _load_stations()
@@ -174,28 +210,47 @@ class StartQuizDialog(QDialog):
             self.stations = []
 
         for s in self.stations:
-            self.station_combo.addItem(s["name"], s["id"])
+            item = QListWidgetItem(s["name"])
+            item.setData(Qt.UserRole, s["id"])
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+            item.setCheckState(Qt.Unchecked)
+            self.list_widget.addItem(item)
 
-        self._on_topic_changed()
+        self.scroll.setWidget(self.list_widget)
+        layout.addWidget(self.scroll, 1)
 
-        layout.addStretch()
+        self.hint = QLabel(
+            "Каждому курсанту будет выдана случайная станция из выбранных."
+        )
+        self.hint.setStyleSheet(
+            f"color: {GRAY_COLOR}; font-size: 12px; padding: 4px;"
+        )
+        self.hint.setWordWrap(True)
+        layout.addWidget(self.hint)
 
         btns = QDialogButtonBox()
         ok_btn = btns.addButton("Начать", QDialogButtonBox.AcceptRole)
         cancel_btn = btns.addButton("Отмена", QDialogButtonBox.RejectRole)
         ok_btn.setStyleSheet(f"""
             QPushButton {{
-                font-size: 15px; font-weight: bold;
-                background-color: {ACCENT_COLOR}; color: white;
-                border-radius: 8px; padding: 8px 20px; border: none;
+                font-size: 15px;
+                font-weight: bold;
+                background-color: {ACCENT_COLOR};
+                color: white;
+                border-radius: 8px;
+                padding: 8px 20px;
+                border: none;
             }}
             QPushButton:hover {{ background-color: {ACCENT_HOVER}; }}
         """)
         cancel_btn.setStyleSheet("""
             QPushButton {
-                font-size: 15px; background-color: #757575;
-                color: white; border-radius: 8px;
-                padding: 8px 20px; border: none;
+                font-size: 15px;
+                background-color: #757575;
+                color: white;
+                border-radius: 8px;
+                padding: 8px 20px;
+                border: none;
             }
             QPushButton:hover { background-color: #616161; }
         """)
@@ -203,23 +258,47 @@ class StartQuizDialog(QDialog):
         btns.rejected.connect(self.reject)
         layout.addWidget(btns)
 
+        self._on_topic_changed()
+
     def _on_topic_changed(self):
         topic = self.topic_combo.currentData()
-        is_single = (topic == "single")
-        self.station_label.setVisible(is_single)
-        self.station_combo.setVisible(is_single)
+        is_multi = (topic == "multi")
+        self.stations_label.setVisible(is_multi)
+        self.select_all_btn.setVisible(is_multi)
+        self.scroll.setVisible(is_multi)
+        self.hint.setVisible(is_multi)
+
+    def _toggle_all(self):
+        any_unchecked = False
+        for i in range(self.list_widget.count()):
+            item = self.list_widget.item(i)
+            if item.checkState() == Qt.Unchecked:
+                any_unchecked = True
+                break
+
+        new_state = Qt.Checked if any_unchecked else Qt.Unchecked
+        for i in range(self.list_widget.count()):
+            item = self.list_widget.item(i)
+            item.setCheckState(new_state)
+
+    def _get_selected_ids(self):
+        result = []
+        for i in range(self.list_widget.count()):
+            item = self.list_widget.item(i)
+            if item.checkState() == Qt.Checked:
+                result.append(item.data(Qt.UserRole))
+        return result
 
     def get_choice(self):
         topic = self.topic_combo.currentData()
-        station_id = None
-        station_name = None
-        if topic == "single":
-            station_id = self.station_combo.currentData()
-            station_name = self.station_combo.currentText()
+        station_ids = []
+        if topic == "multi":
+            station_ids = self._get_selected_ids()
         return {
             "topic": topic,
-            "station_id": station_id,
-            "station_name": station_name,
+            "station_id": None,
+            "station_name": None,
+            "station_ids": station_ids,
         }
 
 
@@ -250,14 +329,19 @@ class HistoryDialog(QDialog):
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setStyleSheet(f"""
             QTableWidget {{
-                font-size: 14px; background-color: white;
+                font-size: 14px;
+                background-color: white;
                 border: 2px solid {LIGHT_ACCENT};
-                border-radius: 8px; gridline-color: #E0E0E0;
+                border-radius: 8px;
+                gridline-color: #E0E0E0;
             }}
             QHeaderView::section {{
-                background-color: {HEADER_COLOR}; color: white;
-                padding: 8px; font-size: 14px;
-                font-weight: bold; border: none;
+                background-color: {HEADER_COLOR};
+                color: white;
+                padding: 8px;
+                font-size: 14px;
+                font-weight: bold;
+                border: none;
             }}
             {SCROLLBAR_STYLE}
         """)
@@ -291,8 +375,11 @@ class HistoryDialog(QDialog):
         close_btn.setMinimumHeight(42)
         close_btn.setStyleSheet("""
             QPushButton {
-                font-size: 15px; background-color: #757575;
-                color: white; border-radius: 8px; border: none;
+                font-size: 15px;
+                background-color: #757575;
+                color: white;
+                border-radius: 8px;
+                border: none;
             }
             QPushButton:hover { background-color: #616161; }
         """)
@@ -368,9 +455,13 @@ class ServerWindow(QMainWindow):
         self.start_btn.setMinimumWidth(220)
         self.start_btn.setStyleSheet(f"""
             QPushButton {{
-                font-size: 16px; font-weight: bold;
-                background-color: {ACCENT_COLOR}; color: white;
-                border-radius: 10px; padding: 10px 20px; border: none;
+                font-size: 16px;
+                font-weight: bold;
+                background-color: {ACCENT_COLOR};
+                color: white;
+                border-radius: 10px;
+                padding: 10px 20px;
+                border: none;
             }}
             QPushButton:hover {{ background-color: {ACCENT_HOVER}; }}
         """)
@@ -383,9 +474,13 @@ class ServerWindow(QMainWindow):
         self.stop_btn.setEnabled(False)
         self.stop_btn.setStyleSheet(f"""
             QPushButton {{
-                font-size: 16px; font-weight: bold;
-                background-color: {DANGER_COLOR}; color: white;
-                border-radius: 10px; padding: 10px 20px; border: none;
+                font-size: 16px;
+                font-weight: bold;
+                background-color: {DANGER_COLOR};
+                color: white;
+                border-radius: 10px;
+                padding: 10px 20px;
+                border: none;
             }}
             QPushButton:hover {{ background-color: #7F1D1D; }}
             QPushButton:disabled {{ background-color: #CCCCCC; color: #777777; }}
@@ -398,8 +493,12 @@ class ServerWindow(QMainWindow):
         self.clear_btn.setMinimumWidth(220)
         self.clear_btn.setStyleSheet(f"""
             QPushButton {{
-                font-size: 15px; background-color: #757575; color: white;
-                border-radius: 10px; padding: 10px 20px; border: none;
+                font-size: 15px;
+                background-color: #757575;
+                color: white;
+                border-radius: 10px;
+                padding: 10px 20px;
+                border: none;
             }}
             QPushButton:hover {{ background-color: #616161; }}
         """)
@@ -432,9 +531,11 @@ class ServerWindow(QMainWindow):
         self.filter_input.setMinimumHeight(40)
         self.filter_input.setStyleSheet(f"""
             QLineEdit {{
-                font-size: 14px; padding: 5px 12px;
+                font-size: 14px;
+                padding: 5px 12px;
                 border: 2px solid {LIGHT_ACCENT};
-                border-radius: 8px; background-color: white;
+                border-radius: 8px;
+                background-color: white;
                 color: {TEXT_COLOR};
             }}
             QLineEdit:focus {{ border-color: {ACCENT_HOVER}; }}
@@ -447,8 +548,12 @@ class ServerWindow(QMainWindow):
         reset_filter_btn.setMinimumWidth(120)
         reset_filter_btn.setStyleSheet(f"""
             QPushButton {{
-                font-size: 14px; background-color: #757575; color: white;
-                border-radius: 8px; padding: 5px 15px; border: none;
+                font-size: 14px;
+                background-color: #757575;
+                color: white;
+                border-radius: 8px;
+                padding: 5px 15px;
+                border: none;
             }}
             QPushButton:hover {{ background-color: #616161; }}
         """)
@@ -479,18 +584,24 @@ class ServerWindow(QMainWindow):
         self.connected_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.connected_table.setStyleSheet(f"""
             QTableWidget {{
-                font-size: 14px; background-color: white;
+                font-size: 14px;
+                background-color: white;
                 border: 2px solid {LIGHT_ACCENT};
-                border-radius: 10px; gridline-color: #E0E0E0;
+                border-radius: 10px;
+                gridline-color: #E0E0E0;
             }}
             QTableWidget::item {{ padding: 8px; }}
             QTableWidget::item:selected {{
-                background-color: {LIGHT_ACCENT}; color: {HEADER_COLOR};
+                background-color: {LIGHT_ACCENT};
+                color: {HEADER_COLOR};
             }}
             QHeaderView::section {{
-                background-color: {HEADER_COLOR}; color: white;
-                padding: 10px; font-size: 14px;
-                font-weight: bold; border: none;
+                background-color: {HEADER_COLOR};
+                color: white;
+                padding: 10px;
+                font-size: 14px;
+                font-weight: bold;
+                border: none;
             }}
             {SCROLLBAR_STYLE}
         """)
@@ -522,18 +633,24 @@ class ServerWindow(QMainWindow):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                font-size: 15px; background-color: white;
+                font-size: 15px;
+                background-color: white;
                 border: 2px solid {LIGHT_ACCENT};
-                border-radius: 10px; gridline-color: #E0E0E0;
+                border-radius: 10px;
+                gridline-color: #E0E0E0;
             }}
             QTableWidget::item {{ padding: 10px; }}
             QTableWidget::item:selected {{
-                background-color: {LIGHT_ACCENT}; color: {HEADER_COLOR};
+                background-color: {LIGHT_ACCENT};
+                color: {HEADER_COLOR};
             }}
             QHeaderView::section {{
-                background-color: {HEADER_COLOR}; color: white;
-                padding: 12px; font-size: 15px;
-                font-weight: bold; border: none;
+                background-color: {HEADER_COLOR};
+                color: white;
+                padding: 12px;
+                font-size: 15px;
+                font-weight: bold;
+                border: none;
             }}
             {SCROLLBAR_STYLE}
         """)
@@ -579,29 +696,41 @@ class ServerWindow(QMainWindow):
 
         choice = dialog.get_choice()
         topic = choice["topic"]
-        station_id = choice["station_id"]
-        station_name = choice["station_name"]
+        station_ids = choice.get("station_ids", [])
 
-        if topic == "single" and not station_id:
-            QMessageBox.warning(self, "Ошибка", "Не выбрана станция.")
+        if topic == "multi" and not station_ids:
+            QMessageBox.warning(
+                self, "Ошибка",
+                "Выберите хотя бы одну станцию."
+            )
             return
 
-        if topic == "single":
+        if topic == "multi":
             stations = _load_stations()
-            station = next((s for s in stations if s["id"] == station_id), None)
-            if station:
-                q_count = _calculate_question_count(len(station["specs"]))
-            else:
-                q_count = QUIZ_MIN_QUESTIONS
+            total_specs = 0
+            for sid in station_ids:
+                st = next((s for s in stations if s["id"] == sid), None)
+                if st:
+                    total_specs += len(st["specs"])
+            q_count = _calculate_question_count(
+                total_specs // max(1, len(station_ids))
+            )
         else:
             q_count = QUIZ_MIN_QUESTIONS
 
-        self.db.create_quiz(topic, station_id, station_name, q_count)
+        self.db.create_quiz(
+            topic,
+            station_id=None,
+            station_name=None,
+            question_count=q_count,
+            station_ids=station_ids,
+        )
+
         self.stop_btn.setEnabled(True)
         self.start_btn.setEnabled(False)
 
         topic_text = {
-            "single": f"Одна станция: {station_name}",
+            "multi": f"Несколько станций ({len(station_ids)} шт.)",
             "radio": "Все радиорелейные",
             "satellite": "Все спутниковые",
             "all": "Все станции",
