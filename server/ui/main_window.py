@@ -1,12 +1,13 @@
 import os
 import sys
 import json
+from datetime import datetime
 
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
     QMessageBox, QComboBox, QDialog, QDialogButtonBox, QAbstractItemView,
-    QSizePolicy, QSplitter,
+    QSizePolicy, QSplitter, QLineEdit,
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QColor
@@ -52,6 +53,9 @@ BG_COLOR = "#FAFAFA"
 DANGER_COLOR = "#991B1B"
 WARN_COLOR = "#B45309"
 GRAY_COLOR = "#6B7280"
+YELLOW_BG = "#FFF9C4"
+ORANGE_BG = "#FFE0B2"
+RED_BG = "#FFCDD2"
 
 SCROLLBAR_STYLE = """
 QScrollBar:vertical {
@@ -104,6 +108,14 @@ def _grade_color(grade):
     if grade == 3:
         return WARN_COLOR
     return DANGER_COLOR
+
+
+def _fmt_time(seconds):
+    if seconds is None or seconds < 0:
+        seconds = 0
+    m = seconds // 60
+    s = seconds % 60
+    return f"{m:02d}:{s:02d}"
 
 
 class StartQuizDialog(QDialog):
@@ -271,9 +283,7 @@ class HistoryDialog(QDialog):
             table.setItem(i, 4, grade_item)
 
             duration = attempt.get("duration", 0)
-            mins = duration // 60
-            secs = duration % 60
-            table.setItem(i, 5, QTableWidgetItem(f"{mins:02d}:{secs:02d}"))
+            table.setItem(i, 5, QTableWidgetItem(_fmt_time(duration)))
 
         layout.addWidget(table)
 
@@ -312,11 +322,13 @@ class ServerWindow(QMainWindow):
         self.server_ip = info["ip"]
         self.server_port = info["port"]
 
+        self.filter_text = ""
+
         self.init_ui()
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.refresh_all)
-        self.timer.start(2000)
+        self.timer.start(1000)
 
         self.refresh_all()
 
@@ -404,6 +416,47 @@ class ServerWindow(QMainWindow):
 
         layout.addLayout(controls)
 
+        filter_row = QHBoxLayout()
+        filter_row.setSpacing(10)
+
+        filter_lbl = QLabel("🔍 Поиск:")
+        filter_lbl.setStyleSheet(
+            f"color: {HEADER_COLOR}; font-size: 14px; font-weight: bold;"
+        )
+        filter_row.addWidget(filter_lbl)
+
+        self.filter_input = QLineEdit()
+        self.filter_input.setPlaceholderText(
+            "Введите ФИО или группу для фильтрации..."
+        )
+        self.filter_input.setMinimumHeight(40)
+        self.filter_input.setStyleSheet(f"""
+            QLineEdit {{
+                font-size: 14px; padding: 5px 12px;
+                border: 2px solid {LIGHT_ACCENT};
+                border-radius: 8px; background-color: white;
+                color: {TEXT_COLOR};
+            }}
+            QLineEdit:focus {{ border-color: {ACCENT_HOVER}; }}
+        """)
+        self.filter_input.textChanged.connect(self._on_filter_changed)
+        filter_row.addWidget(self.filter_input, 1)
+
+        reset_filter_btn = QPushButton("Сбросить")
+        reset_filter_btn.setMinimumHeight(40)
+        reset_filter_btn.setMinimumWidth(120)
+        reset_filter_btn.setStyleSheet(f"""
+            QPushButton {{
+                font-size: 14px; background-color: #757575; color: white;
+                border-radius: 8px; padding: 5px 15px; border: none;
+            }}
+            QPushButton:hover {{ background-color: #616161; }}
+        """)
+        reset_filter_btn.clicked.connect(self._reset_filter)
+        filter_row.addWidget(reset_filter_btn)
+
+        layout.addLayout(filter_row)
+
         splitter = QSplitter(Qt.Vertical)
 
         connected_widget = QWidget()
@@ -460,9 +513,10 @@ class ServerWindow(QMainWindow):
         quiz_layout.addWidget(self.quiz_title)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(7)
+        self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
-            "#", "ФИО", "Группа", "Станция", "Время", "Оценка", "Статус"
+            "#", "ФИО", "Группа", "Станция", "Осталось", "Оценка",
+            "Статус", "Время"
         ])
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -486,6 +540,7 @@ class ServerWindow(QMainWindow):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.table.verticalHeader().setVisible(False)
+        self.table.setSortingEnabled(False)
         self.table.doubleClicked.connect(self.on_row_double_clicked)
         quiz_layout.addWidget(self.table)
 
@@ -499,6 +554,15 @@ class ServerWindow(QMainWindow):
         splitter.setSizes([300, 500])
 
         layout.addWidget(splitter)
+
+    def _on_filter_changed(self, text):
+        self.filter_text = text.strip().lower()
+        self.refresh_students()
+
+    def _reset_filter(self):
+        self.filter_input.setText("")
+        self.filter_text = ""
+        self.refresh_students()
 
     def start_quiz(self):
         active = self.db.get_active_quiz()
@@ -608,6 +672,13 @@ class ServerWindow(QMainWindow):
         self.db.check_timeouts(active["id"], STUDENT_TIMEOUT)
         students = self.db.get_all_students(active["id"])
 
+        if self.filter_text:
+            students = [
+                s for s in students
+                if self.filter_text in (s.get("fio", "").lower())
+                or self.filter_text in (s.get("group_name", "").lower())
+            ]
+
         self.table.setRowCount(len(students))
 
         counter = {"finished": 0, "in_progress": 0, "interrupted": 0, "waiting": 0}
@@ -616,38 +687,64 @@ class ServerWindow(QMainWindow):
             status = s.get("status", "waiting")
             counter[status] = counter.get(status, 0) + 1
 
+            duration = s.get("duration", 0)
+            time_limit = s.get("question_count", 0) * SCORE_PER_QUESTION
+
+            if status == "finished" or status == "interrupted":
+                remaining_text = "—"
+                remaining_sec = None
+            else:
+                elapsed = self._calc_elapsed(s)
+                remaining_sec = max(0, time_limit - elapsed)
+                remaining_text = _fmt_time(remaining_sec)
+
             self.table.setItem(i, 0, QTableWidgetItem(str(i + 1)))
             self.table.setItem(i, 1, QTableWidgetItem(s.get("fio", "")))
             self.table.setItem(i, 2, QTableWidgetItem(s.get("group_name", "")))
             self.table.setItem(i, 3, QTableWidgetItem(s.get("station_name", "—")))
 
-            duration = s.get("duration", 0)
-            if duration > 0:
-                mins = duration // 60
-                secs = duration % 60
-                time_text = f"{mins:02d}:{secs:02d}"
-            else:
-                time_text = "—"
-            self.table.setItem(i, 4, QTableWidgetItem(time_text))
+            remaining_item = QTableWidgetItem(remaining_text)
+            f = QFont()
+            f.setBold(True)
+            remaining_item.setFont(f)
+            self.table.setItem(i, 4, remaining_item)
 
             grade = s.get("grade", 0)
             percent = s.get("percent", 0)
             if status == "finished" and grade:
                 grade_item = QTableWidgetItem(f"{grade}  ({percent:.0f}%)")
-                f = QFont()
-                f.setBold(True)
-                grade_item.setFont(f)
+                f2 = QFont()
+                f2.setBold(True)
+                grade_item.setFont(f2)
                 grade_item.setForeground(QColor(_grade_color(grade)))
             else:
                 grade_item = QTableWidgetItem("—")
             self.table.setItem(i, 5, grade_item)
 
             status_item = QTableWidgetItem(STATUS_LABELS.get(status, status))
-            f2 = QFont()
-            f2.setBold(True)
-            status_item.setFont(f2)
+            f3 = QFont()
+            f3.setBold(True)
+            status_item.setFont(f3)
             status_item.setForeground(QColor(STATUS_COLORS.get(status, TEXT_COLOR)))
             self.table.setItem(i, 6, status_item)
+
+            duration_text = "—" if duration <= 0 else _fmt_time(duration)
+            self.table.setItem(i, 7, QTableWidgetItem(duration_text))
+
+            row_color = None
+            if status in ("in_progress", "waiting") and remaining_sec is not None:
+                if remaining_sec <= 10:
+                    row_color = RED_BG
+                elif remaining_sec <= 30:
+                    row_color = ORANGE_BG
+                elif remaining_sec <= 60:
+                    row_color = YELLOW_BG
+
+            if row_color:
+                for col in range(self.table.columnCount()):
+                    cell = self.table.item(i, col)
+                    if cell:
+                        cell.setBackground(QColor(row_color))
 
         total = len(students)
         self.stats_label.setText(
@@ -656,6 +753,16 @@ class ServerWindow(QMainWindow):
             f"🟡 В процессе: {counter['in_progress'] + counter['waiting']}   "
             f"⛔ Прервано: {counter['interrupted']}"
         )
+
+    def _calc_elapsed(self, s):
+        started_at = s.get("started_at")
+        if not started_at:
+            return 0
+        try:
+            dt = datetime.fromisoformat(started_at)
+            return int((datetime.now() - dt).total_seconds())
+        except Exception:
+            return 0
 
     def on_row_double_clicked(self, index):
         row = index.row()
