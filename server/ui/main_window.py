@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
     QMessageBox, QComboBox, QDialog, QDialogButtonBox, QAbstractItemView,
-    QSizePolicy,
+    QSizePolicy, QSplitter,
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QColor
@@ -34,10 +34,10 @@ def _setup_paths():
 DATA_PATH = _setup_paths()
 
 from config import (  # noqa: E402
-    STUDENT_TIMEOUT,
+    STUDENT_TIMEOUT, CONNECTION_TIMEOUT,
     QUIZ_MIN_QUESTIONS, QUIZ_MAX_QUESTIONS, QUIZ_PERCENT,
     SCORE_PER_QUESTION,
-    GRADE_EXCELLENT, GRADE_GOOD, GRADE_SATISFACTORY,
+    GRADE_5, GRADE_4, GRADE_3,
 )
 from database import Database  # noqa: E402
 from broadcast import Broadcaster  # noqa: E402
@@ -51,6 +51,7 @@ LIGHT_ACCENT = "#95D5B2"
 BG_COLOR = "#FAFAFA"
 DANGER_COLOR = "#991B1B"
 WARN_COLOR = "#B45309"
+GRAY_COLOR = "#6B7280"
 
 SCROLLBAR_STYLE = """
 QScrollBar:vertical {
@@ -74,7 +75,7 @@ STATUS_LABELS = {
 }
 
 STATUS_COLORS = {
-    "waiting": "#6B7280",
+    "waiting": GRAY_COLOR,
     "in_progress": WARN_COLOR,
     "finished": ACCENT_COLOR,
     "interrupted": DANGER_COLOR,
@@ -93,6 +94,16 @@ def _calculate_question_count(total):
     if count > total:
         count = total
     return count
+
+
+def _grade_color(grade):
+    if grade == 5:
+        return ACCENT_COLOR
+    if grade == 4:
+        return "#388E3C"
+    if grade == 3:
+        return WARN_COLOR
+    return DANGER_COLOR
 
 
 class StartQuizDialog(QDialog):
@@ -205,7 +216,7 @@ class HistoryDialog(QDialog):
     def __init__(self, fio, group_name, history, parent=None):
         super().__init__(parent)
         self.setWindowTitle(f"История: {fio} ({group_name})")
-        self.resize(750, 500)
+        self.resize(800, 500)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         layout = QVBoxLayout(self)
@@ -251,15 +262,12 @@ class HistoryDialog(QDialog):
                     f"{attempt.get('question_count', 0)}"
                 )
             )
-            percent = attempt.get("percent", 0)
-            grade_item = QTableWidgetItem(f"{percent:.1f}%")
-            grade_item.setForeground(QColor(
-                ACCENT_COLOR if percent >= GRADE_EXCELLENT
-                else (WARN_COLOR if percent >= GRADE_SATISFACTORY else DANGER_COLOR)
-            ))
+            grade = attempt.get("grade", 0)
+            grade_item = QTableWidgetItem(str(grade) if grade else "—")
             f = QFont()
             f.setBold(True)
             grade_item.setFont(f)
+            grade_item.setForeground(QColor(_grade_color(grade)))
             table.setItem(i, 4, grade_item)
 
             duration = attempt.get("duration", 0)
@@ -292,8 +300,8 @@ class ServerWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Сервер тренажёра — Преподаватель")
-        self.resize(1300, 850)
-        self.setMinimumSize(1000, 600)
+        self.resize(1400, 900)
+        self.setMinimumSize(1100, 650)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         self.db = Database()
@@ -307,10 +315,10 @@ class ServerWindow(QMainWindow):
         self.init_ui()
 
         self.timer = QTimer()
-        self.timer.timeout.connect(self.refresh_students)
+        self.timer.timeout.connect(self.refresh_all)
         self.timer.start(2000)
 
-        self.refresh_students()
+        self.refresh_all()
 
     def init_ui(self):
         central = QWidget()
@@ -373,15 +381,83 @@ class ServerWindow(QMainWindow):
         self.stop_btn.clicked.connect(self.stop_quiz)
         controls.addWidget(self.stop_btn)
 
+        self.clear_btn = QPushButton("🧹  Очистить подключённых")
+        self.clear_btn.setMinimumHeight(52)
+        self.clear_btn.setMinimumWidth(220)
+        self.clear_btn.setStyleSheet(f"""
+            QPushButton {{
+                font-size: 15px; background-color: #757575; color: white;
+                border-radius: 10px; padding: 10px 20px; border: none;
+            }}
+            QPushButton:hover {{ background-color: #616161; }}
+        """)
+        self.clear_btn.clicked.connect(self.clear_connections)
+        controls.addWidget(self.clear_btn)
+
         controls.addStretch()
 
         self.quiz_label = QLabel("Летучка не запущена")
         self.quiz_label.setStyleSheet(
-            f"color: #6B7280; font-size: 15px; font-weight: bold;"
+            f"color: {GRAY_COLOR}; font-size: 15px; font-weight: bold;"
         )
         controls.addWidget(self.quiz_label)
 
         layout.addLayout(controls)
+
+        splitter = QSplitter(Qt.Vertical)
+
+        connected_widget = QWidget()
+        connected_layout = QVBoxLayout(connected_widget)
+        connected_layout.setContentsMargins(0, 0, 0, 0)
+        connected_layout.setSpacing(8)
+
+        self.connected_title = QLabel("Подключены к серверу: 0")
+        self.connected_title.setStyleSheet(
+            f"color: {HEADER_COLOR}; font-size: 17px; font-weight: bold; padding: 5px;"
+        )
+        connected_layout.addWidget(self.connected_title)
+
+        self.connected_table = QTableWidget()
+        self.connected_table.setColumnCount(4)
+        self.connected_table.setHorizontalHeaderLabels([
+            "#", "ФИО", "Группа", "Подключился"
+        ])
+        self.connected_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.connected_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.connected_table.setStyleSheet(f"""
+            QTableWidget {{
+                font-size: 14px; background-color: white;
+                border: 2px solid {LIGHT_ACCENT};
+                border-radius: 10px; gridline-color: #E0E0E0;
+            }}
+            QTableWidget::item {{ padding: 8px; }}
+            QTableWidget::item:selected {{
+                background-color: {LIGHT_ACCENT}; color: {HEADER_COLOR};
+            }}
+            QHeaderView::section {{
+                background-color: {HEADER_COLOR}; color: white;
+                padding: 10px; font-size: 14px;
+                font-weight: bold; border: none;
+            }}
+            {SCROLLBAR_STYLE}
+        """)
+        self.connected_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.connected_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.connected_table.verticalHeader().setVisible(False)
+        connected_layout.addWidget(self.connected_table)
+
+        splitter.addWidget(connected_widget)
+
+        quiz_widget = QWidget()
+        quiz_layout = QVBoxLayout(quiz_widget)
+        quiz_layout.setContentsMargins(0, 0, 0, 0)
+        quiz_layout.setSpacing(8)
+
+        self.quiz_title = QLabel("Результаты летучки")
+        self.quiz_title.setStyleSheet(
+            f"color: {HEADER_COLOR}; font-size: 17px; font-weight: bold; padding: 5px;"
+        )
+        quiz_layout.addWidget(self.quiz_title)
 
         self.table = QTableWidget()
         self.table.setColumnCount(7)
@@ -411,13 +487,18 @@ class ServerWindow(QMainWindow):
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.table.verticalHeader().setVisible(False)
         self.table.doubleClicked.connect(self.on_row_double_clicked)
-        layout.addWidget(self.table)
+        quiz_layout.addWidget(self.table)
 
         self.stats_label = QLabel("Всего: 0   ✅ 0   🟡 0   ⛔ 0")
         self.stats_label.setStyleSheet(
             f"color: {TEXT_COLOR}; font-size: 14px; font-weight: bold; padding: 5px;"
         )
-        layout.addWidget(self.stats_label)
+        quiz_layout.addWidget(self.stats_label)
+
+        splitter.addWidget(quiz_widget)
+        splitter.setSizes([300, 500])
+
+        layout.addWidget(splitter)
 
     def start_quiz(self):
         active = self.db.get_active_quiz()
@@ -467,7 +548,7 @@ class ServerWindow(QMainWindow):
             f"color: {ACCENT_COLOR}; font-size: 15px; font-weight: bold;"
         )
 
-        self.refresh_students()
+        self.refresh_all()
 
     def stop_quiz(self):
         active = self.db.get_active_quiz()
@@ -484,9 +565,36 @@ class ServerWindow(QMainWindow):
         self.start_btn.setEnabled(True)
         self.quiz_label.setText("Летучка не запущена")
         self.quiz_label.setStyleSheet(
-            f"color: #6B7280; font-size: 15px; font-weight: bold;"
+            f"color: {GRAY_COLOR}; font-size: 15px; font-weight: bold;"
         )
+        self.refresh_all()
+
+    def clear_connections(self):
+        if QMessageBox.question(
+            self, "Очистить подключённых",
+            "Удалить всех подключённых из списка?",
+            QMessageBox.Yes | QMessageBox.No
+        ) != QMessageBox.Yes:
+            return
+        self.db.clear_connections()
+        self.refresh_all()
+
+    def refresh_all(self):
+        self.refresh_connected()
         self.refresh_students()
+
+    def refresh_connected(self):
+        self.db.cleanup_connections(CONNECTION_TIMEOUT)
+        students = self.db.get_connected_students()
+
+        self.connected_title.setText(f"Подключены к серверу: {len(students)}")
+        self.connected_table.setRowCount(len(students))
+
+        for i, s in enumerate(students):
+            self.connected_table.setItem(i, 0, QTableWidgetItem(str(i + 1)))
+            self.connected_table.setItem(i, 1, QTableWidgetItem(s.get("fio", "")))
+            self.connected_table.setItem(i, 2, QTableWidgetItem(s.get("group_name", "")))
+            self.connected_table.setItem(i, 3, QTableWidgetItem(s.get("connected_at", "")))
 
     def refresh_students(self):
         active = self.db.get_active_quiz()
@@ -522,16 +630,14 @@ class ServerWindow(QMainWindow):
                 time_text = "—"
             self.table.setItem(i, 4, QTableWidgetItem(time_text))
 
+            grade = s.get("grade", 0)
             percent = s.get("percent", 0)
-            if status == "finished":
-                grade_item = QTableWidgetItem(f"{percent:.1f}%")
+            if status == "finished" and grade:
+                grade_item = QTableWidgetItem(f"{grade}  ({percent:.0f}%)")
                 f = QFont()
                 f.setBold(True)
                 grade_item.setFont(f)
-                grade_item.setForeground(QColor(
-                    ACCENT_COLOR if percent >= GRADE_EXCELLENT
-                    else (WARN_COLOR if percent >= GRADE_SATISFACTORY else DANGER_COLOR)
-                ))
+                grade_item.setForeground(QColor(_grade_color(grade)))
             else:
                 grade_item = QTableWidgetItem("—")
             self.table.setItem(i, 5, grade_item)
