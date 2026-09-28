@@ -32,8 +32,11 @@ from config import (  # noqa: E402
     API_START, API_FINISH, API_HEARTBEAT,
     API_RESULTS, API_STUDENTS, API_PING,
     API_QUIZ_INFO, API_STOP_QUIZ,
-    STUDENT_TIMEOUT, QUIZ_MIN_QUESTIONS, QUIZ_MAX_QUESTIONS,
+    API_REGISTER, API_CONNECTED,
+    STUDENT_TIMEOUT, CONNECTION_TIMEOUT,
+    QUIZ_MIN_QUESTIONS, QUIZ_MAX_QUESTIONS,
     QUIZ_PERCENT, SCORE_PER_QUESTION,
+    GRADE_5, GRADE_4, GRADE_3,
 )
 from database import Database  # noqa: E402
 
@@ -52,6 +55,16 @@ def _calculate_question_count(total):
     return count
 
 
+def _calculate_grade(percent):
+    if percent >= GRADE_5:
+        return 5
+    if percent >= GRADE_4:
+        return 4
+    if percent >= GRADE_3:
+        return 3
+    return 2
+
+
 def create_app():
     app = Flask(__name__)
     db = Database()
@@ -59,6 +72,29 @@ def create_app():
     @app.route(API_PING, methods=["GET"])
     def ping():
         return jsonify({"status": "ok", "server": "RRS_TRAINER"})
+
+    # ---------- Регистрация подключённых ----------
+
+    @app.route(API_REGISTER, methods=["POST"])
+    def register():
+        data = request.get_json(force=True, silent=True) or {}
+        fio = (data.get("fio") or "").strip()
+        group_name = (data.get("group") or "").strip()
+        ip = (data.get("ip") or request.remote_addr or "").strip()
+
+        if not fio or not group_name:
+            return jsonify({"status": "error",
+                            "message": "ФИО и группа обязательны"}), 400
+
+        conn_id = db.register_connection(fio, group_name, ip)
+        return jsonify({"status": "ok", "connection_id": conn_id})
+
+    @app.route(API_CONNECTED, methods=["GET"])
+    def connected():
+        db.cleanup_connections(CONNECTION_TIMEOUT)
+        return jsonify({"students": db.get_connected_students()})
+
+    # ---------- Летучка ----------
 
     @app.route(API_QUIZ_INFO, methods=["GET"])
     def quiz_info():
@@ -177,24 +213,37 @@ def create_app():
                             "message": "Студент не найден"}), 404
 
         student = dict(row)
+        grade = _calculate_grade(percent)
 
-        db.update_student_finish(student_id, correct_count, score, percent, duration)
+        db.update_student_finish(
+            student_id, correct_count, score, percent, grade, duration
+        )
         db.save_attempt(
             student["fio"], student["group_name"],
             student["station_id"], student["station_name"],
             score, percent, correct_count,
-            student["question_count"], duration,
+            student["question_count"], grade, duration,
         )
 
-        return jsonify({"status": "ok"})
+        return jsonify({"status": "ok", "grade": grade})
 
     @app.route(API_HEARTBEAT, methods=["POST"])
     def heartbeat():
         data = request.get_json(force=True, silent=True) or {}
         student_id = data.get("student_id")
-        if not student_id:
+        fio = (data.get("fio") or "").strip()
+        group_name = (data.get("group") or "").strip()
+        ip = (data.get("ip") or request.remote_addr or "").strip()
+
+        if fio and group_name:
+            db.register_connection(fio, group_name, ip)
+
+        if student_id:
+            db.update_heartbeat(student_id)
+
+        if not student_id and not (fio and group_name):
             return jsonify({"status": "error"}), 400
-        db.update_heartbeat(student_id)
+
         return jsonify({"status": "ok"})
 
     @app.route(API_STUDENTS, methods=["GET"])
