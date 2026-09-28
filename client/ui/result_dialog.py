@@ -11,30 +11,39 @@ ACCENT_COLOR = "#2D6A4F"
 ACCENT_HOVER = "#40916C"
 LIGHT_ACCENT = "#95D5B2"
 BG_COLOR = "#FAFAFA"
+DANGER_COLOR = "#991B1B"
+WARN_COLOR = "#B45309"
+GOOD_COLOR = "#388E3C"
 
-SCROLLBAR_STYLE = """
-QScrollBar:vertical {
-    background: #F0F0F0;
-    width: 14px;
-    margin: 0px;
-    border-radius: 7px;
-}
-QScrollBar::handle:vertical {
-    background: #6B8E7B;
-    min-height: 30px;
-    border-radius: 7px;
-    margin: 2px;
-}
-QScrollBar::handle:vertical:hover {
-    background: #4A6B5A;
-}
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-    height: 0px;
-}
-QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-    background: transparent;
-}
-"""
+
+def _percent_to_grade(percent):
+    if percent >= 90:
+        return 5
+    if percent >= 70:
+        return 4
+    if percent >= 50:
+        return 3
+    return 2
+
+
+def _grade_color(grade):
+    if grade == 5:
+        return ACCENT_COLOR
+    if grade == 4:
+        return GOOD_COLOR
+    if grade == 3:
+        return WARN_COLOR
+    return DANGER_COLOR
+
+
+def _grade_bg(grade):
+    if grade == 5:
+        return "#95D5B2"
+    if grade == 4:
+        return "#B7E4C7"
+    if grade == 3:
+        return "#FDE68A"
+    return "#FECACA"
 
 
 class ResultDialog(QDialog):
@@ -42,31 +51,14 @@ class ResultDialog(QDialog):
     def __init__(self, station_name, correct, total, percent, errors, is_control=False):
         super().__init__()
         self.setWindowTitle("Результат")
-        self.setFixedSize(600, 580)
+        self.setFixedSize(580, 560)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         self.errors = errors
 
-        if percent >= 85:
-            grade = "ОТЛИЧНО"
-            grade_icon = "✔"
-            grade_color = "#1B4332"
-            grade_bg = "#95D5B2"
-        elif percent >= 70:
-            grade = "ХОРОШО"
-            grade_icon = "✔"
-            grade_color = "#2D6A4F"
-            grade_bg = "#B7E4C7"
-        elif percent >= 60:
-            grade = "УДОВЛЕТВОРИТЕЛЬНО"
-            grade_icon = "!"
-            grade_color = "#B45309"
-            grade_bg = "#FDE68A"
-        else:
-            grade = "НЕУДОВЛЕТВОРИТЕЛЬНО"
-            grade_icon = "✘"
-            grade_color = "#991B1B"
-            grade_bg = "#FECACA"
+        grade = _percent_to_grade(percent)
+        grade_color = _grade_color(grade)
+        grade_bg = _grade_bg(grade)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(35, 35, 35, 35)
@@ -84,15 +76,15 @@ class ResultDialog(QDialog):
         station_label = QLabel(station_name)
         station_label.setAlignment(Qt.AlignCenter)
         station_label.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 20px; font-weight: bold; padding: 5px;"
+            f"color: {HEADER_COLOR}; font-size: 18px; font-weight: bold; padding: 5px;"
         )
         layout.addWidget(station_label)
 
-        grade_label = QLabel(f"{grade_icon}  {grade}")
+        grade_label = QLabel(f"ОЦЕНКА:  {grade}")
         grade_label.setAlignment(Qt.AlignCenter)
         grade_label.setStyleSheet(
             f"color: {grade_color}; background-color: {grade_bg}; "
-            f"font-size: 26px; font-weight: bold; padding: 15px; border-radius: 12px;"
+            f"font-size: 36px; font-weight: bold; padding: 20px; border-radius: 15px;"
         )
         layout.addWidget(grade_label)
 
@@ -103,10 +95,10 @@ class ResultDialog(QDialog):
 
         percent_label = QLabel(f"{percent:.1f}%")
         percent_label.setAlignment(Qt.AlignCenter)
-        percent_label.setFixedHeight(90)
+        percent_label.setFixedHeight(70)
         percent_label.setStyleSheet(
             f"background-color: {grade_color}; color: white; "
-            f"font-size: 42px; font-weight: bold; border-radius: 15px;"
+            f"font-size: 32px; font-weight: bold; border-radius: 15px;"
         )
         layout.addWidget(percent_label)
 
@@ -182,7 +174,7 @@ class ErrorsDialog(QDialog):
     def __init__(self, errors, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Список ошибок")
-        self.resize(800, 650)
+        self.resize(750, 600)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         layout = QVBoxLayout(self)
@@ -198,14 +190,10 @@ class ErrorsDialog(QDialog):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet(f"""
-            QScrollArea {{
-                border: none;
-                background-color: white;
-                border-radius: 8px;
-            }}
-            {SCROLLBAR_STYLE}
-        """)
+        scroll.setStyleSheet(
+            f"QScrollArea {{ border: 2px solid {LIGHT_ACCENT}; "
+            f"border-radius: 8px; background-color: white; }}"
+        )
         inner = QWidget()
         inner.setStyleSheet("background-color: white;")
         inner_layout = QVBoxLayout(inner)
