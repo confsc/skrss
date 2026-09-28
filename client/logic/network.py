@@ -18,6 +18,7 @@ API_START = "/api/start"
 API_FINISH = "/api/finish"
 API_HEARTBEAT = "/api/heartbeat"
 API_REGISTER = "/api/register"
+API_DISCONNECT = "/api/disconnect"
 
 SERVER_PORT = 5000
 
@@ -142,6 +143,17 @@ class ApiClient:
         except Exception as e:
             print(f"[API] register: {e}")
             return False
+
+    def disconnect(self, fio, group_name):
+        try:
+            requests.post(
+                self.base_url + API_DISCONNECT,
+                json={"fio": fio, "group": group_name},
+                timeout=self.timeout,
+                proxies=self.proxies,
+            )
+        except Exception:
+            pass
 
     def start_quiz(self, fio, group_name):
         try:
