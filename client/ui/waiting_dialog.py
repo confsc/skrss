@@ -1,12 +1,8 @@
-"""
-Окно ожидания летучки.
-Показывается, пока преподаватель не запустит летучку.
-"""
+
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
 )
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont
 
 
 HEADER_COLOR = "#1B4332"
@@ -15,6 +11,8 @@ ACCENT_HOVER = "#40916C"
 LIGHT_ACCENT = "#95D5B2"
 BG_COLOR = "#FAFAFA"
 TEXT_COLOR = "#1B1B1B"
+
+HEARTBEAT_INTERVAL = 30
 
 
 class WaitingDialog(QDialog):
@@ -26,8 +24,8 @@ class WaitingDialog(QDialog):
         self.group_name = group_name
         self.result = None
 
-        self.setWindowTitle("Ожидание летучки")
-        self.setFixedSize(600, 420)
+        self.setWindowTitle("Ожидание контроля")
+        self.setFixedSize(620, 450)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         layout = QVBoxLayout(self)
@@ -42,7 +40,7 @@ class WaitingDialog(QDialog):
         )
         layout.addWidget(title)
 
-        subtitle = QLabel("Преподаватель скоро запустит летучку")
+        subtitle = QLabel("Преподаватель скоро запустит контроль")
         subtitle.setAlignment(Qt.AlignCenter)
         subtitle.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 16px;")
         layout.addWidget(subtitle)
@@ -62,7 +60,7 @@ class WaitingDialog(QDialog):
 
         layout.addSpacing(15)
 
-        self.status_label = QLabel("Соединение с сервером активно")
+        self.status_label = QLabel("✅ Вы подключены к серверу")
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setStyleSheet(f"color: {ACCENT_COLOR}; font-size: 13px;")
         layout.addWidget(self.status_label)
@@ -85,15 +83,36 @@ class WaitingDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         layout.addWidget(cancel_btn, alignment=Qt.AlignCenter)
 
+        # Регистрируемся на сервере сразу
+        self.api_client.register(self.fio, self.group_name)
+
+        # Таймер проверки летучки (каждые 2 сек)
         self.timer = QTimer()
         self.timer.timeout.connect(self.check_quiz)
         self.timer.start(2000)
 
+        # Таймер heartbeat (каждые 30 сек)
+        self.heartbeat_timer = QTimer()
+        self.heartbeat_timer.timeout.connect(self.send_heartbeat)
+        self.heartbeat_timer.start(HEARTBEAT_INTERVAL * 1000)
+
         self.check_quiz()
+
+    def send_heartbeat(self):
+        self.api_client.heartbeat(fio=self.fio, group_name=self.group_name)
 
     def check_quiz(self):
         info = self.api_client.quiz_info()
         if info.get("active"):
             self.result = info
             self.timer.stop()
+            self.heartbeat_timer.stop()
             self.accept()
+
+    def closeEvent(self, event):
+        try:
+            self.timer.stop()
+            self.heartbeat_timer.stop()
+        except Exception:
+            pass
+        super().closeEvent(event)
