@@ -122,12 +122,12 @@ def _fmt_time(seconds):
 class StartQuizDialog(QDialog):
 
     SIZE_MULTI = (640, 740)
-    SIZE_SMALL = (520, 320)
+    SIZE_SMALL = (520, 380)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Начать контроль")
-        self.setFixedSize(*self.SIZE_MULTI)
+        self.setFixedSize(*self.SIZE_SMALL)
         self.setStyleSheet(f"background-color: {BG_COLOR};")
 
         layout = QVBoxLayout(self)
@@ -147,6 +147,9 @@ class StartQuizDialog(QDialog):
         self.topic_combo.addItem("Все радиорелейные", "radio")
         self.topic_combo.addItem("Все спутниковые", "satellite")
         self.topic_combo.addItem("Все станции", "all")
+        self.topic_combo.addItem("📷 Фото — все станции", "photo_all")
+        self.topic_combo.addItem("📷 Фото — радиорелейные", "photo_radio")
+        self.topic_combo.addItem("📷 Фото — спутниковые", "photo_satellite")
         self.topic_combo.setMinimumHeight(40)
         self.topic_combo.setStyleSheet(f"""
             QComboBox {{
@@ -749,6 +752,9 @@ class ServerWindow(QMainWindow):
             "radio": "Все радиорелейные",
             "satellite": "Все спутниковые",
             "all": "Все станции",
+            "photo_all": "📷 Фото — все станции",
+            "photo_radio": "📷 Фото — радиорелейные",
+            "photo_satellite": "📷 Фото — спутниковые",
         }.get(topic, topic)
 
         self.quiz_label.setText(f"Контроль: {topic_text}")
