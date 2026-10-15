@@ -8,6 +8,7 @@ from PyQt5.QtGui import QFont
 import random
 from logic.data_loader import load_stations
 from ui.quiz_dialog import QuizDialog
+from ui.photo_quiz_dialog import PhotoQuizDialog
 
 
 HEADER_COLOR = "#1B4332"
@@ -219,6 +220,16 @@ class QuizWindow(QMainWindow):
             )
             return
 
+        mode = data.get("mode", "quiz")
+
+        if mode == "photo":
+            self._start_photo_quiz(data)
+        else:
+            self._start_normal_quiz(data)
+
+        self.go_back()
+
+    def _start_normal_quiz(self, data):
         self.station_label.setText(
             f"Станция: <b>{data.get('station_name', '—')}</b>  |  "
             f"Вопросов: <b>{data.get('question_count', 0)}</b>  |  "
@@ -240,7 +251,24 @@ class QuizWindow(QMainWindow):
         )
         dialog.exec_()
 
-        self.go_back()
+    def _start_photo_quiz(self, data):
+        self.station_label.setText(
+            f"Режим: <b>📷 Фото-контроль</b>  |  "
+            f"Вопросов: <b>{data.get('question_count', 0)}</b>  |  "
+            f"Время: <b>{data.get('time_limit', 0)} сек</b>"
+        )
+
+        dialog = PhotoQuizDialog(
+            station_name=data.get("station_name", "Фото-контроль"),
+            photo_specs=data.get("photo_specs", []),
+            time_limit=data.get("time_limit", 60),
+            student_id=data.get("student_id"),
+            api_client=self.api_client,
+            fio=self.fio,
+            group_name=self.group_name,
+            parent=self,
+        )
+        dialog.exec_()
 
     def go_back(self):
         try:
