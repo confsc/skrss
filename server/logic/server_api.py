@@ -37,6 +37,8 @@ from config import (  # noqa: E402
     QUIZ_MIN_QUESTIONS, QUIZ_MAX_QUESTIONS,
     QUIZ_PERCENT, SCORE_PER_QUESTION,
     GRADE_5, GRADE_4, GRADE_3,
+    PHOTO_OPTIONS_COUNT,
+    PHOTO_QUESTIONS_ALL, PHOTO_QUESTIONS_RADIO, PHOTO_QUESTIONS_SATELLITE,
 )
 from database import Database  # noqa: E402
 
@@ -85,6 +87,57 @@ def _choose_station_for_quiz(topic, quiz, stations):
         return random.choice(pool) if pool else None
 
     return random.choice(stations) if stations else None
+
+
+def _is_photo_topic(topic):
+    return topic in ("photo_all", "photo_radio", "photo_satellite")
+
+
+def _make_photo_questions(stations, count, category=None):
+    if count <= 0:
+        return []
+
+    if category:
+        pool = [s for s in stations if s["category"] == category and s.get("image")]
+    else:
+        pool = [s for s in stations if s.get("image")]
+
+    if len(pool) < 2:
+        return []
+
+    random.shuffle(pool)
+    selected = pool[:min(count, len(pool))]
+
+    result = []
+    for station in selected:
+        correct_name = station["name"]
+
+        same_cat = [s for s in stations
+                    if s["category"] == station["category"]
+                    and s["id"] != station["id"]
+                    and s.get("image")]
+
+        if len(same_cat) < PHOTO_OPTIONS_COUNT - 1:
+            same_cat = [s for s in stations
+                        if s["id"] != station["id"] and s.get("image")]
+
+        wrong_count = PHOTO_OPTIONS_COUNT - 1
+        wrong_pool = random.sample(same_cat, min(wrong_count, len(same_cat)))
+        wrong_names = [s["name"] for s in wrong_pool]
+
+        options = [correct_name] + wrong_names
+        random.shuffle(options)
+
+        result.append({
+            "type": "photo",
+            "question": "Какая это станция?",
+            "image": station["image"],
+            "answer": correct_name,
+            "options": options,
+            "weight": 1.0,
+        })
+
+    return result
 
 
 def create_app():
@@ -163,14 +216,58 @@ def create_app():
                             "message": "Вы уже сдали"}), 409
 
         stations = _load_stations()
-        station = _choose_station_for_quiz(quiz["topic"], quiz, stations)
+        topic = quiz["topic"]
+
+        # ============ ФОТО-КОНТРОЛЬ ============
+        if _is_photo_topic(topic):
+            if topic == "photo_radio":
+                category = "radio"
+                count = PHOTO_QUESTIONS_RADIO
+            elif topic == "photo_satellite":
+                category = "satellite"
+                count = PHOTO_QUESTIONS_SATELLITE
+            else:
+                category = None
+                count = PHOTO_QUESTIONS_ALL
+
+            photo_specs = _make_photo_questions(stations, count, category)
+            if not photo_specs:
+                return jsonify({"status": "error",
+                                "message": "Нет фото для контроля"}), 400
+
+            total_questions = len(photo_specs)
+            time_limit = total_questions * SCORE_PER_QUESTION
+
+            if existing and existing["status"] in ("waiting", "in_progress"):
+                student_id = existing["id"]
+            else:
+                student_id = db.add_student(quiz["id"], fio, group_name)
+
+            db.update_student_start(
+                student_id, "photo", "Фото-контроль", total_questions
+            )
+
+            return jsonify({
+                "status": "ok",
+                "mode": "photo",
+                "student_id": student_id,
+                "quiz_id": quiz["id"],
+                "station_id": "photo",
+                "station_name": "Фото-контроль",
+                "time_limit": time_limit,
+                "question_count": total_questions,
+                "specs": [],
+                "photo_specs": photo_specs,
+            })
+
+        # ============ ОБЫЧНЫЙ КОНТРОЛЬ ============
+        station = _choose_station_for_quiz(topic, quiz, stations)
         if not station:
             return jsonify({"status": "error",
                             "message": "Станция не найдена"}), 400
 
         total_specs = len(station["specs"])
         question_count = _calculate_question_count(total_specs)
-        time_limit = question_count * SCORE_PER_QUESTION
 
         specs_pool = list(station["specs"])
         random.shuffle(specs_pool)
@@ -182,6 +279,7 @@ def create_app():
                 "name": spec["name"],
                 "type": spec.get("type", "text"),
                 "answer": spec["answer"],
+                "weight": spec.get("weight", 0.5),
             }
             if spec.get("unit"):
                 item["unit"] = spec["unit"]
@@ -189,9 +287,9 @@ def create_app():
                 item["options"] = spec["options"]
             if spec.get("tolerance"):
                 item["tolerance"] = spec["tolerance"]
-            if spec.get("weight"):
-                item["weight"] = spec["weight"]
             prepared_specs.append(item)
+
+        time_limit = question_count * SCORE_PER_QUESTION
 
         if existing and existing["status"] in ("waiting", "in_progress"):
             student_id = existing["id"]
@@ -204,6 +302,7 @@ def create_app():
 
         return jsonify({
             "status": "ok",
+            "mode": "quiz",
             "student_id": student_id,
             "quiz_id": quiz["id"],
             "station_id": station["id"],
@@ -211,6 +310,7 @@ def create_app():
             "time_limit": time_limit,
             "question_count": question_count,
             "specs": prepared_specs,
+            "photo_specs": [],
         })
 
     @app.route(API_FINISH, methods=["POST"])
