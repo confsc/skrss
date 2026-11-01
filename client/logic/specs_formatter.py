@@ -88,7 +88,7 @@ def build_specs_html(station):
     """
 
     for spec in specs:
-        unit = spec.get("unit", "").strip()
+        unit = (spec.get("unit") or "").strip()
         name = f"{spec['name']}, {unit}" if unit else spec["name"]
         answer = spec["answer"]
         html += f"<tr><td class='name'>{name}</td><td class='value'>{answer}</td></tr>"
