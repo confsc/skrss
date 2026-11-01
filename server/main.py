@@ -58,8 +58,8 @@ try:
 except Exception as e:
     log(f"log error: {e}")
 
-# ==== ИМПОРТЫ НА ВЕРХНЕМ УРОВНЕ ====
-# Эти импорты PyInstaller видит и анализирует.
+# ==== ??????? ?? ??????? ?????? ====
+# ??? ??????? PyInstaller ????? ? ???????????.
 try:
     from config import SERVER_HOST, SERVER_PORT
     log(f"config: {SERVER_HOST}:{SERVER_PORT}")
@@ -87,11 +87,14 @@ except Exception as e:
 
 try:
     from PyQt5.QtWidgets import QApplication
-    log("PyQt5 imported")
+    from PyQt5.QtCore import Qt
+    from styles import GLOBAL_APP_STYLE
+    log("PyQt5 & styles imported")
 except Exception as e:
     log(f"PyQt5 import error: {e}")
     log(traceback.format_exc())
     QApplication = None
+    GLOBAL_APP_STYLE = ""
 
 
 def run_flask():
@@ -113,7 +116,11 @@ def run_ui():
         log("run_ui: dependencies missing, skipping")
         return
     try:
+        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+        QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
         app = QApplication(sys.argv)
+        if GLOBAL_APP_STYLE:
+            app.setStyleSheet(GLOBAL_APP_STYLE)
         window = ServerWindow()
         window.show()
         log("run_ui: window shown")

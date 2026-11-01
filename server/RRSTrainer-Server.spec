@@ -27,6 +27,7 @@ datas = [
 
 hiddenimports = [
     'config',
+    'styles',
     'server_api',
     'database',
     'broadcast',

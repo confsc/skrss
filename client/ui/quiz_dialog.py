@@ -1,21 +1,24 @@
+"""
+?????? ???????????? ?? ??????????????? (???).
+"""
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QComboBox, QPushButton, QGridLayout, QScrollArea, QWidget,
-    QSizePolicy, QMessageBox
+    QSizePolicy, QMessageBox, QFrame, QGraphicsDropShadowEffect
 )
 from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QColor, QCursor
+
 from logic.scoring import check_answer, get_key_specs, get_quiz_specs, get_unit_options
 from ui.result_dialog import ResultDialog
 
-
-HEADER_COLOR = "#1B4332"
-TEXT_COLOR = "#1B1B1B"
-ACCENT_COLOR = "#2D6A4F"
-ACCENT_HOVER = "#40916C"
-LIGHT_ACCENT = "#95D5B2"
-BG_COLOR = "#FAFAFA"
-DANGER_COLOR = "#991B1B"
-WARN_COLOR = "#B45309"
+from styles import (
+    COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_HOVER, COLOR_PRIMARY_LIGHT,
+    COLOR_PRIMARY_PALE, COLOR_BG_MAIN, COLOR_CARD_BG, COLOR_BORDER,
+    COLOR_BORDER_HOVER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
+    COLOR_TEXT_LIGHT, COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER,
+    BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, make_badge_html
+)
 
 HEARTBEAT_INTERVAL = 30
 STOP_CHECK_INTERVAL = 3
@@ -23,20 +26,6 @@ SERVER_CHECK_INTERVAL = 5
 
 MASTER_MODIFIERS = Qt.ControlModifier | Qt.ShiftModifier
 MASTER_KEY = Qt.Key_F1
-
-SCROLLBAR_STYLE = """
-QScrollBar:vertical {
-    background: #F0F0F0; width: 14px; margin: 0px;
-    border-radius: 7px;
-}
-QScrollBar::handle:vertical {
-    background: #6B8E7B; min-height: 30px;
-    border-radius: 7px; margin: 2px;
-}
-QScrollBar::handle:vertical:hover { background: #4A6B5A; }
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
-QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
-"""
 
 
 def _percent_to_grade(percent):
@@ -71,15 +60,15 @@ class QuizDialog(QDialog):
         if is_server_mode:
             self.station = {"id": station_id, "name": station_name, "specs": specs}
             self.specs = specs
-            self.setWindowTitle(f"Контроль: {station_name}")
+            self.setWindowTitle(f"????????: {station_name}")
         else:
             self.station = station
             if is_control:
                 self.specs = get_quiz_specs(station)
-                self.setWindowTitle(f"Контроль: {station['name']}")
+                self.setWindowTitle(f"????????: {station['name']}")
             else:
                 self.specs = get_key_specs(station)
-                self.setWindowTitle(f"Входной контроль: {station['name']}")
+                self.setWindowTitle(f"??????? ????????: {station['name']}")
 
         self.inputs = {}
         self.unit_inputs = {}
@@ -90,96 +79,124 @@ class QuizDialog(QDialog):
         self.forced_stop = False
         self.fail_count = 0
 
-        self.resize(1150, 800)
-        self.setMinimumSize(900, 500)
-        self.setStyleSheet(f"background-color: {BG_COLOR};")
+        self.resize(1150, 820)
+        self.setMinimumSize(900, 600)
+        self.setStyleSheet(f"background-color: {COLOR_BG_MAIN};")
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(28, 22, 28, 22)
+        main_layout.setSpacing(14)
 
-        top = QHBoxLayout()
-        title = QLabel(self.station.get("name", ""))
-        title.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 24px; font-weight: bold; padding: 5px;"
-        )
-        top.addWidget(title)
-        top.addStretch()
+        # ??????? ?????????????? ?????? (?????????, ???? ? ??????)
+        header_card = QFrame()
+        header_card.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLOR_CARD_BG};
+                border: 1.5px solid {COLOR_BORDER};
+                border-radius: 12px;
+                padding: 12px 18px;
+            }}
+        """)
+        h_layout = QHBoxLayout(header_card)
+        h_layout.setContentsMargins(0, 0, 0, 0)
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(2)
+
+        mode_badge = "??????? ????????" if is_server_mode else ("???????? ??????" if is_control else "????????????")
+        badge_lbl = QLabel(make_badge_html(mode_badge, COLOR_PRIMARY_PALE, COLOR_PRIMARY_DARK))
+        badge_lbl.setStyleSheet("border: none;")
+        title_col.addWidget(badge_lbl)
+
+        st_title = self.station.get("name", "????")
+        title = QLabel(f"???????: {st_title}")
+        title.setStyleSheet(f"color: {COLOR_PRIMARY_DARK}; font-size: 20px; font-weight: 700; border: none;")
+        title_col.addWidget(title)
+
+        h_layout.addLayout(title_col)
+        h_layout.addStretch()
 
         if is_server_mode and self.time_limit > 0:
-            self.timer_label = QLabel(f"⏱ {self._fmt_time(self.time_limit)}")
+            self.timer_label = QLabel(f"? {self._fmt_time(self.time_limit)}")
             self.timer_label.setStyleSheet(f"""
-                color: white; background-color: {ACCENT_COLOR};
-                font-size: 20px; font-weight: bold;
-                padding: 10px 20px; border-radius: 10px;
+                color: #FFFFFF;
+                background-color: {COLOR_PRIMARY};
+                font-size: 18px;
+                font-weight: 700;
+                padding: 8px 18px;
+                border-radius: 8px;
+                border: none;
             """)
-            top.addWidget(self.timer_label)
+            h_layout.addWidget(self.timer_label)
 
-        main_layout.addLayout(top)
+        main_layout.addWidget(header_card)
 
-        if is_server_mode:
-            hint_text = "Ответьте на вопросы. Для каждой характеристики выберите единицу измерения."
-        elif is_control:
-            hint_text = "Ответьте на вопросы."
-        else:
-            hint_text = "Заполните характеристики."
-
-        hint = QLabel(hint_text)
-        hint.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 14px; padding: 5px;")
+        # ?????????
+        hint_text = (
+            "????????? ????????? ???????. ??? ??????? ??????? ???????? ???????? ? ???????? ??????? ?????????."
+            if is_server_mode or is_control else
+            "?????????????? ????????? ?????? ???????? ???????-??????????? ????????????? (???)."
+        )
+        hint = QLabel(f"?? {hint_text}")
+        hint.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; font-size: 13px; padding-left: 4px;")
         main_layout.addWidget(hint)
 
+        # ??????? ????????? ? ?????????? ????????
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        scroll.setStyleSheet(f"""
-            QScrollArea {{ border: none; background-color: {BG_COLOR}; }}
-            {SCROLLBAR_STYLE}
-        """)
+        scroll.setStyleSheet(f"QScrollArea {{ border: 1.5px solid {COLOR_BORDER}; border-radius: 12px; background-color: {COLOR_CARD_BG}; }}")
 
         inner = QWidget()
-        inner.setStyleSheet(f"background-color: {BG_COLOR};")
+        inner.setStyleSheet(f"background-color: {COLOR_CARD_BG};")
         inner_layout = QVBoxLayout(inner)
-        inner_layout.setContentsMargins(0, 0, 0, 0)
+        inner_layout.setContentsMargins(18, 16, 18, 16)
 
         grid = QGridLayout()
-        grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(10)
+        grid.setHorizontalSpacing(14)
+        grid.setVerticalSpacing(12)
 
-        LABEL_MIN = 260
-        UNIT_MIN = 150
+        LABEL_MIN = 280
+        UNIT_MIN = 160
         RESULT_MIN = 45
 
-        HEADER_STYLE = (
-            f"color: white; background-color: {HEADER_COLOR}; "
-            f"font-size: 13px; font-weight: bold; padding: 10px 8px; "
-            f"border-radius: 6px;"
-        )
+        HEADER_STYLE = f"""
+            color: #FFFFFF;
+            background-color: {COLOR_PRIMARY_DARK};
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 12px;
+            border-radius: 6px;
+        """
 
-        header_name = QLabel("Характеристика")
+        header_name = QLabel("?????????????? / ??????")
         header_name.setStyleSheet(HEADER_STYLE)
-        header_name.setAlignment(Qt.AlignCenter)
+        header_name.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         header_name.setMinimumWidth(LABEL_MIN)
-        header_name.setMinimumHeight(45)
         grid.addWidget(header_name, 0, 0)
 
-        header_val = QLabel("Значение")
+        header_val = QLabel("???????? ??????")
         header_val.setStyleSheet(HEADER_STYLE)
-        header_val.setAlignment(Qt.AlignCenter)
-        header_val.setMinimumHeight(45)
+        header_val.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid.addWidget(header_val, 0, 1)
 
-        header_unit = QLabel("Единицы измерения")
+        header_unit = QLabel("??????? ?????????")
         header_unit.setStyleSheet(HEADER_STYLE)
-        header_unit.setAlignment(Qt.AlignCenter)
+        header_unit.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         header_unit.setMinimumWidth(UNIT_MIN)
-        header_unit.setMinimumHeight(45)
         grid.addWidget(header_unit, 0, 2)
+
+        header_res = QLabel("??????")
+        header_res.setStyleSheet(HEADER_STYLE)
+        header_res.setAlignment(Qt.AlignCenter)
+        header_res.setMinimumWidth(RESULT_MIN)
+        grid.addWidget(header_res, 0, 3)
 
         for row_idx, spec in enumerate(self.specs, start=1):
             label = QLabel(f"{spec['name']}:")
             label.setWordWrap(True)
             label.setMinimumWidth(LABEL_MIN)
-            label.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 14px; padding: 5px;")
+            label.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; font-size: 13px; font-weight: 600;")
             label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             grid.addWidget(label, row_idx, 0)
 
@@ -190,33 +207,19 @@ class QuizDialog(QDialog):
                 widget.addItem("")
                 for opt in spec.get("options", []):
                     widget.addItem(opt)
-                widget.setMinimumHeight(40)
-                widget.setStyleSheet(f"""
-                    QComboBox {{
-                        font-size: 14px; padding: 5px 10px;
-                        border: 2px solid {LIGHT_ACCENT};
-                        border-radius: 6px; background-color: white;
-                        color: {TEXT_COLOR};
-                    }}
-                """)
+                widget.setMinimumHeight(38)
                 self.inputs[spec["name"]] = widget
                 grid.addWidget(widget, row_idx, 1)
 
-                empty_unit = QLabel("")
+                empty_unit = QLabel("-")
+                empty_unit.setAlignment(Qt.AlignCenter)
+                empty_unit.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
                 empty_unit.setMinimumWidth(UNIT_MIN)
                 grid.addWidget(empty_unit, row_idx, 2)
             else:
                 widget = QLineEdit()
-                widget.setPlaceholderText("Введите значение...")
-                widget.setMinimumHeight(40)
-                widget.setStyleSheet(f"""
-                    QLineEdit {{
-                        font-size: 14px; padding: 5px 10px;
-                        border: 2px solid {LIGHT_ACCENT};
-                        border-radius: 6px; background-color: white;
-                        color: {TEXT_COLOR};
-                    }}
-                """)
+                widget.setPlaceholderText("??????? ?????...")
+                widget.setMinimumHeight(38)
                 self.inputs[spec["name"]] = widget
                 grid.addWidget(widget, row_idx, 1)
 
@@ -229,27 +232,24 @@ class QuizDialog(QDialog):
                         for opt in unit_options:
                             unit_widget.addItem(opt)
                         unit_widget.setMinimumWidth(UNIT_MIN)
-                        unit_widget.setMinimumHeight(40)
-                        unit_widget.setStyleSheet(f"""
-                            QComboBox {{
-                                font-size: 14px; padding: 5px 8px;
-                                border: 2px solid {LIGHT_ACCENT};
-                                border-radius: 6px; background-color: white;
-                                color: {TEXT_COLOR};
-                            }}
-                        """)
+                        unit_widget.setMinimumHeight(38)
                         self.unit_inputs[spec["name"]] = unit_widget
                         grid.addWidget(unit_widget, row_idx, 2)
                     else:
-                        empty_unit = QLabel("")
+                        empty_unit = QLabel("-")
+                        empty_unit.setAlignment(Qt.AlignCenter)
+                        empty_unit.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
                         empty_unit.setMinimumWidth(UNIT_MIN)
                         grid.addWidget(empty_unit, row_idx, 2)
                 else:
-                    empty_unit = QLabel("")
+                    empty_unit = QLabel("-")
+                    empty_unit.setAlignment(Qt.AlignCenter)
+                    empty_unit.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
                     empty_unit.setMinimumWidth(UNIT_MIN)
                     grid.addWidget(empty_unit, row_idx, 2)
 
-            result_lbl = QLabel("")
+            result_lbl = QLabel(".")
+            result_lbl.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 16px;")
             result_lbl.setMinimumWidth(RESULT_MIN)
             result_lbl.setAlignment(Qt.AlignCenter)
             self.result_labels[spec["name"]] = result_lbl
@@ -266,41 +266,31 @@ class QuizDialog(QDialog):
 
         main_layout.addWidget(scroll)
 
+        # ?????? ?????? ??????????
         btns = QHBoxLayout()
-        btns.addStretch()
+        btns.setSpacing(12)
 
-        self.check_btn = QPushButton("Проверить")
-        self.check_btn.setMinimumHeight(46)
-        self.check_btn.setMinimumWidth(170)
-        self.check_btn.setStyleSheet(f"""
-            QPushButton {{
-                font-size: 16px; font-weight: bold;
-                background-color: {ACCENT_COLOR}; color: white;
-                border-radius: 10px; border: none;
-                padding: 8px 25px;
-            }}
-            QPushButton:hover {{ background-color: {ACCENT_HOVER}; }}
-        """)
-        self.check_btn.clicked.connect(self.check)
-        btns.addWidget(self.check_btn)
-
-        cancel_btn = QPushButton("Закрыть")
-        cancel_btn.setMinimumHeight(46)
-        cancel_btn.setMinimumWidth(140)
-        cancel_btn.setStyleSheet("""
-            QPushButton {
-                font-size: 16px; background-color: #757575;
-                color: white; border-radius: 10px; border: none;
-                padding: 8px 25px;
-            }
-            QPushButton:hover { background-color: #616161; }
-        """)
+        cancel_btn = QPushButton("???????? ? ?????")
+        cancel_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        cancel_btn.setMinimumHeight(44)
+        cancel_btn.setMinimumWidth(150)
+        cancel_btn.setStyleSheet(BTN_SECONDARY_STYLE)
         cancel_btn.clicked.connect(self.reject)
         btns.addWidget(cancel_btn)
 
         btns.addStretch()
+
+        self.check_btn = QPushButton("????????? ? ????????? ?")
+        self.check_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        self.check_btn.setMinimumHeight(44)
+        self.check_btn.setMinimumWidth(220)
+        self.check_btn.setStyleSheet(BTN_PRIMARY_STYLE)
+        self.check_btn.clicked.connect(self.check)
+        btns.addWidget(self.check_btn)
+
         main_layout.addLayout(btns)
 
+        # ???????
         if is_server_mode and self.time_limit > 0:
             self.timer = QTimer()
             self.timer.timeout.connect(self.tick)
@@ -379,8 +369,8 @@ class QuizDialog(QDialog):
                 self.finished = True
                 QMessageBox.warning(
                     self,
-                    "Сервер недоступен",
-                    "Связь с сервером потеряна.\n\nРабота остановлена."
+                    "?????? ??????????",
+                    "????? ? ???????? ????????????? ????????.\n\n???????????? ????????."
                 )
                 self.reject()
 
@@ -399,11 +389,10 @@ class QuizDialog(QDialog):
             self.forced_stop = True
             self.stop_all_timers()
             self.finished = True
-
             QMessageBox.warning(
                 self,
-                "Контроль завершён",
-                "Контроль завершён преподавателем.\n\nРабота остановлена."
+                "???????? ??????????",
+                "???????? ??? ???????? ??????????????.\n\n???????????? ???????????."
             )
             self.reject()
 
@@ -425,20 +414,27 @@ class QuizDialog(QDialog):
 
     def tick(self):
         self.remaining -= 1
-        self.timer_label.setText(f"⏱ {self._fmt_time(max(0, self.remaining))}")
+        self.timer_label.setText(f"? {self._fmt_time(max(0, self.remaining))}")
 
-        if self.remaining <= 60:
+        if self.remaining <= 60 and self.remaining > 10:
             self.timer_label.setStyleSheet(f"""
-                color: white; background-color: {WARN_COLOR};
-                font-size: 20px; font-weight: bold;
-                padding: 10px 20px; border-radius: 10px;
+                color: #FFFFFF;
+                background-color: {COLOR_WARNING};
+                font-size: 18px;
+                font-weight: 700;
+                padding: 8px 18px;
+                border-radius: 8px;
             """)
-        if self.remaining <= 10:
+        elif self.remaining <= 10:
             self.timer_label.setStyleSheet(f"""
-                color: white; background-color: {DANGER_COLOR};
-                font-size: 20px; font-weight: bold;
-                padding: 10px 20px; border-radius: 10px;
+                color: #FFFFFF;
+                background-color: {COLOR_DANGER};
+                font-size: 18px;
+                font-weight: 700;
+                padding: 8px 18px;
+                border-radius: 8px;
             """)
+
         if self.remaining <= 0:
             self.timer.stop()
             self.time_out()
@@ -447,7 +443,7 @@ class QuizDialog(QDialog):
         if self.finished:
             return
         self.finished = True
-        QMessageBox.warning(self, "Время вышло", "Время истекло. Тест завершён.")
+        QMessageBox.warning(self, "????? ?????", "????? ???????????? ???????. ?????? ???????????? ?? ????????.")
         self.check(auto=True)
 
     def check(self, auto=False):
@@ -479,28 +475,24 @@ class QuizDialog(QDialog):
             if check_answer(spec, user_answer, user_unit):
                 total_score += weight
                 correct_count += 1
-                self.result_labels[spec["name"]].setText("✔")
-                self.result_labels[spec["name"]].setStyleSheet(
-                    "color: #2E7D32; font-size: 22px; font-weight: bold;"
-                )
+                self.result_labels[spec["name"]].setText("?")
+                self.result_labels[spec["name"]].setStyleSheet(f"color: {COLOR_SUCCESS}; font-size: 20px; font-weight: bold;")
             else:
                 unit = spec.get("unit", "").strip()
                 if unit and user_unit:
-                    user_full = f"{user_answer} {user_unit}" if user_answer else "—"
+                    user_full = f"{user_answer} {user_unit}" if user_answer else "-"
                 elif unit:
-                    user_full = f"{user_answer} (единица не выбрана)" if user_answer else "—"
+                    user_full = f"{user_answer} (??????? ?? ???????)" if user_answer else "-"
                 else:
-                    user_full = user_answer if user_answer else "—"
+                    user_full = user_answer if user_answer else "-"
                 correct_full = f"{spec['answer']} {unit}".strip()
                 errors.append({
                     "name": spec["name"],
                     "user": user_full,
                     "correct": correct_full,
                 })
-                self.result_labels[spec["name"]].setText("✘")
-                self.result_labels[spec["name"]].setStyleSheet(
-                    "color: #C62828; font-size: 22px; font-weight: bold;"
-                )
+                self.result_labels[spec["name"]].setText("?")
+                self.result_labels[spec["name"]].setStyleSheet(f"color: {COLOR_DANGER}; font-size: 20px; font-weight: bold;")
 
         percent = (total_score / max_score * 100) if max_score > 0 else 0
         grade = _percent_to_grade(percent)

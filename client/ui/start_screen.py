@@ -1,192 +1,334 @@
-from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QSizePolicy, QMessageBox
-)
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPixmap
-from logic.data_loader import resource_path
-from logic.network import ServerFinder, ApiClient, try_direct_ip
-from ui.learning_window import LearningWindow
-from ui.quiz_window import QuizWindow
-from ui.student_form import StudentFormDialog
-from ui.waiting_dialog import WaitingDialog
+"""
+?????? ??????-??????? ? ????? (QSS) ??? ????????? skrss (Client ? Host).
+??????-?????????? ????? (Light/Slate) ? ??????-?????????? ????????.
+"""
 
+# ???????? ???????
+COLOR_PRIMARY_DARK = "#1B4332"     # ???????? ???????
+COLOR_PRIMARY = "#2D6A4F"          # ?????????? (??????? ??????)
+COLOR_PRIMARY_HOVER = "#40916C"    # ??????? ??? ?????????
+COLOR_PRIMARY_LIGHT = "#95D5B2"    # ??????? ?????? (??? ?????????)
+COLOR_PRIMARY_PALE = "#D8F3DC"     # ????? ?????? ??????? ???
 
-HEADER_COLOR = "#1B4332"
-TEXT_COLOR = "#1B1B1B"
-ACCENT_COLOR = "#2D6A4F"
-ACCENT_HOVER = "#40916C"
-LIGHT_ACCENT = "#95D5B2"
-BG_COLOR = "#FAFAFA"
+# ??????????? ????? (Slate)
+COLOR_BG_MAIN = "#F8FAFC"          # ??????? ???? ???? (?????? ??????-?????)
+COLOR_CARD_BG = "#FFFFFF"          # ??? ???????? ? ???????
+COLOR_CARD_BG_ALT = "#F1F5F9"      # ????????? ??? ????????
+COLOR_BORDER = "#E2E8F0"           # ??????????? ?????? ???????
+COLOR_BORDER_FOCUS = "#2D6A4F"     # ??????? ??? ??????
+COLOR_BORDER_HOVER = "#CBD5E1"     # ??????? ??? ??????
 
+# ???????????
+COLOR_TEXT_PRIMARY = "#0F172A"     # ???????? ????? (Slate 900)
+COLOR_TEXT_SECONDARY = "#475569"   # ????????? ????? / ??????? (Slate 600)
+COLOR_TEXT_MUTED = "#94A3B8"       # ????????? / ?????????? ????? (Slate 400)
+COLOR_TEXT_LIGHT = "#FFFFFF"       # ????? ????? ??? ??????
 
-class StartScreen(QMainWindow):
+# ????????? ?????
+COLOR_SUCCESS = "#16A34A"          # ??????? (????? / ?????????)
+COLOR_SUCCESS_BG = "#DCFCE7"       # ?????? ??? ??????
+COLOR_WARNING = "#D97706"          # ???????? (? ???????? / ????????)
+COLOR_WARNING_BG = "#FEF3C7"       # ?????? ??? ??????????????
+COLOR_DANGER = "#DC2626"           # ??????? (?????? / ???????)
+COLOR_DANGER_BG = "#FEE2E2"        # ?????? ??? ?????????
+COLOR_INFO = "#2563EB"             # ????-?????
+COLOR_INFO_BG = "#DBEAFE"          # ?????? ????? ???
 
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Тренажёр: Радиорелейные и спутниковые станции")
-        self.resize(1100, 850)
-        self.setMinimumSize(800, 600)
-        self.setStyleSheet(f"background-color: {BG_COLOR};")
+# ????????? ???????
+FONT_FAMILY = "Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
 
-        self.learning_window = None
-        self.quiz_window = None
-        self.current_pixmap = None
+# ?????????? ????? ??????????
+GLOBAL_APP_STYLE = f"""
+QMainWindow, QDialog {{
+    background-color: {COLOR_BG_MAIN};
+    font-family: {FONT_FAMILY};
+    color: {COLOR_TEXT_PRIMARY};
+}}
 
-        self.api_client = None
-        self.fio = ""
-        self.group_name = ""
+QWidget {{
+    font-family: {FONT_FAMILY};
+    color: {COLOR_TEXT_PRIMARY};
+}}
 
-        central = QWidget()
-        self.setCentralWidget(central)
-        layout = QVBoxLayout(central)
-        layout.setAlignment(Qt.AlignCenter)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(15)
+/* ?????????? */
+QScrollBar:vertical {{
+    background: {COLOR_BG_MAIN};
+    width: 10px;
+    margin: 0px;
+    border-radius: 5px;
+}}
+QScrollBar::handle:vertical {{
+    background: #CBD5E1;
+    min-height: 25px;
+    border-radius: 5px;
+    margin: 2px;
+}}
+QScrollBar::handle:vertical:hover {{
+    background: #94A3B8;
+}}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+    height: 0px;
+}}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+    background: transparent;
+}}
 
-        self.img_label = QLabel()
-        self.img_label.setAlignment(Qt.AlignCenter)
-        self.img_label.setMinimumHeight(280)
-        self.img_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.img_label.setStyleSheet("background-color: transparent; border: none;")
+QScrollBar:horizontal {{
+    background: {COLOR_BG_MAIN};
+    height: 10px;
+    margin: 0px;
+    border-radius: 5px;
+}}
+QScrollBar::handle:horizontal {{
+    background: #CBD5E1;
+    min-width: 25px;
+    border-radius: 5px;
+    margin: 2px;
+}}
+QScrollBar::handle:horizontal:hover {{
+    background: #94A3B8;
+}}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+    width: 0px;
+}}
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{
+    background: transparent;
+}}
 
-        bg_path = resource_path("images/start_background.png")
-        pix = QPixmap(bg_path)
-        if not pix.isNull():
-            self.current_pixmap = pix
-        else:
-            self.img_label.setText("(фото не найдено)")
-            self.img_label.setStyleSheet(
-                "color: #C62828; font-size: 16px; padding: 20px; border: none;"
-            )
+/* ???? ????? */
+QLineEdit, QComboBox {{
+    background-color: {COLOR_CARD_BG};
+    border: 1.5px solid {COLOR_BORDER};
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: {COLOR_TEXT_PRIMARY};
+    selection-background-color: {COLOR_PRIMARY_PALE};
+    selection-color: {COLOR_PRIMARY_DARK};
+}}
+QLineEdit:focus, QComboBox:focus {{
+    border: 1.5px solid {COLOR_PRIMARY};
+    background-color: #FFFFFF;
+}}
+QLineEdit:hover, QComboBox:hover {{
+    border-color: {COLOR_BORDER_HOVER};
+}}
 
-        layout.addWidget(self.img_label, 5)
+/* ?????????? ?????? */
+QComboBox::drop-down {{
+    border: none;
+    width: 24px;
+    padding-right: 8px;
+}}
+QComboBox QAbstractItemView {{
+    background-color: {COLOR_CARD_BG};
+    border: 1px solid {COLOR_BORDER};
+    border-radius: 8px;
+    selection-background-color: {COLOR_PRIMARY_PALE};
+    selection-color: {COLOR_PRIMARY_DARK};
+    outline: none;
+    padding: 4px;
+}}
 
-        title = QLabel("Тренажёр: Радиорелейные и спутниковые станции")
-        title.setAlignment(Qt.AlignCenter)
-        title.setWordWrap(True)
-        title.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 26px; font-weight: bold; padding: 10px;"
-        )
-        layout.addWidget(title, 1)
+/* ?????? */
+QListWidget {{
+    background-color: {COLOR_CARD_BG};
+    border: 1.5px solid {COLOR_BORDER};
+    border-radius: 10px;
+    outline: none;
+    padding: 6px;
+}}
+QListWidget::item {{
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 2px;
+    border: none;
+    color: {COLOR_TEXT_PRIMARY};
+}}
+QListWidget::item:hover {{
+    background-color: {COLOR_CARD_BG_ALT};
+}}
+QListWidget::item:selected {{
+    background-color: {COLOR_PRIMARY_PALE};
+    color: {COLOR_PRIMARY_DARK};
+    font-weight: 600;
+}}
 
-        buttons = QHBoxLayout()
-        buttons.setAlignment(Qt.AlignCenter)
-        buttons.setSpacing(50)
+/* ??????? */
+QTableWidget {{
+    background-color: {COLOR_CARD_BG};
+    border: 1.5px solid {COLOR_BORDER};
+    border-radius: 10px;
+    gridline-color: {COLOR_BORDER};
+    outline: none;
+}}
+QTableWidget::item {{
+    padding: 8px 12px;
+    border-bottom: 1px solid {COLOR_BORDER};
+}}
+QTableWidget::item:selected {{
+    background-color: {COLOR_PRIMARY_PALE};
+    color: {COLOR_PRIMARY_DARK};
+}}
+QHeaderView::section {{
+    background-color: {COLOR_CARD_BG_ALT};
+    color: {COLOR_TEXT_SECONDARY};
+    font-weight: 600;
+    font-size: 13px;
+    padding: 10px 12px;
+    border: none;
+    border-bottom: 1.5px solid {COLOR_BORDER};
+}}
 
-        btn_learn = QPushButton("📚\nРежим обучения")
-        btn_learn.setMinimumSize(280, 140)
-        btn_learn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        btn_learn.setStyleSheet(f"""
-            QPushButton {{
-                font-size: 20px; font-weight: bold;
-                background-color: {ACCENT_COLOR}; color: white;
-                border-radius: 15px; border: none; padding: 15px;
-            }}
-            QPushButton:hover {{ background-color: {ACCENT_HOVER}; }}
-        """)
-        btn_learn.clicked.connect(self.open_learning)
-        buttons.addWidget(btn_learn)
+/* ??????? (Tabs) */
+QTabWidget::pane {{
+    border: 1.5px solid {COLOR_BORDER};
+    border-radius: 10px;
+    background-color: {COLOR_CARD_BG};
+    top: -1px;
+}}
+QTabBar::tab {{
+    background-color: {COLOR_BG_MAIN};
+    color: {COLOR_TEXT_SECONDARY};
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 14px;
+    border: 1px solid {COLOR_BORDER};
+    border-bottom: none;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    margin-right: 4px;
+}}
+QTabBar::tab:selected {{
+    background-color: {COLOR_CARD_BG};
+    color: {COLOR_PRIMARY_DARK};
+    border-top: 3px solid {COLOR_PRIMARY};
+    border-bottom: 1px solid {COLOR_CARD_BG};
+}}
+QTabBar::tab:hover:!selected {{
+    background-color: {COLOR_CARD_BG_ALT};
+    color: {COLOR_TEXT_PRIMARY};
+}}
 
-        btn_quiz = QPushButton("📝\nРежим контроля")
-        btn_quiz.setMinimumSize(280, 140)
-        btn_quiz.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        btn_quiz.setStyleSheet(f"""
-            QPushButton {{
-                font-size: 20px; font-weight: bold;
-                background-color: {ACCENT_HOVER}; color: white;
-                border-radius: 15px; border: none; padding: 15px;
-            }}
-            QPushButton:hover {{ background-color: {ACCENT_COLOR}; }}
-        """)
-        btn_quiz.clicked.connect(self.open_quiz)
-        buttons.addWidget(btn_quiz)
+/* ????????-??? */
+QProgressBar {{
+    background-color: {COLOR_BORDER};
+    border-radius: 6px;
+    height: 12px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: bold;
+    color: {COLOR_TEXT_PRIMARY};
+}}
+QProgressBar::chunk {{
+    background-color: {COLOR_PRIMARY};
+    border-radius: 6px;
+}}
 
-        layout.addLayout(buttons)
+/* ????????? Tooltips */
+QToolTip {{
+    background-color: {COLOR_TEXT_PRIMARY};
+    color: #FFFFFF;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+}}
+"""
 
-    def update_image(self):
-        if not self.current_pixmap:
-            return
-        w = max(300, self.img_label.width() - 20)
-        h = max(200, self.img_label.height() - 20)
-        self.img_label.setPixmap(
-            self.current_pixmap.scaled(w, h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        )
+# ????? ??????
+BTN_PRIMARY_STYLE = f"""
+QPushButton {{
+    background-color: {COLOR_PRIMARY};
+    color: {COLOR_TEXT_LIGHT};
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    padding: 10px 20px;
+}}
+QPushButton:hover {{
+    background-color: {COLOR_PRIMARY_HOVER};
+}}
+QPushButton:pressed {{
+    background-color: {COLOR_PRIMARY_DARK};
+}}
+QPushButton:disabled {{
+    background-color: #CBD5E1;
+    color: #94A3B8;
+}}
+"""
 
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self.update_image()
+BTN_SECONDARY_STYLE = f"""
+QPushButton {{
+    background-color: {COLOR_CARD_BG};
+    color: {COLOR_TEXT_PRIMARY};
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1.5px solid {COLOR_BORDER};
+    padding: 10px 20px;
+}}
+QPushButton:hover {{
+    background-color: {COLOR_CARD_BG_ALT};
+    border-color: {COLOR_BORDER_HOVER};
+}}
+QPushButton:pressed {{
+    background-color: {COLOR_BORDER};
+}}
+QPushButton:disabled {{
+    background-color: {COLOR_BG_MAIN};
+    color: #94A3B8;
+    border-color: {COLOR_BORDER};
+}}
+"""
 
-    def showEvent(self, event):
-        super().showEvent(event)
-        self.update_image()
-        self.api_client = None
-        self.fio = ""
-        self.group_name = ""
+BTN_DANGER_STYLE = f"""
+QPushButton {{
+    background-color: {COLOR_DANGER};
+    color: {COLOR_TEXT_LIGHT};
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    padding: 8px 16px;
+}}
+QPushButton:hover {{
+    background-color: #B91C1C;
+}}
+QPushButton:pressed {{
+    background-color: #991B1B;
+}}
+"""
 
-    def open_learning(self):
-        self.learning_window = LearningWindow(back_callback=self.show)
-        self.learning_window.show()
-        self.hide()
+BTN_SUCCESS_STYLE = f"""
+QPushButton {{
+    background-color: {COLOR_SUCCESS};
+    color: {COLOR_TEXT_LIGHT};
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    padding: 8px 16px;
+}}
+QPushButton:hover {{
+    background-color: #15803D;
+}}
+QPushButton:pressed {{
+    background-color: #166534;
+}}
+"""
 
-    def open_quiz(self):
-        dialog = StudentFormDialog(self)
-        if dialog.exec_() != StudentFormDialog.Accepted:
-            return
-
-        self.fio = dialog.fio
-        self.group_name = dialog.group
-        manual_ip = dialog.manual_ip
-
-        ip = None
-        port = None
-
-        if manual_ip:
-            result = try_direct_ip(manual_ip)
-            if result:
-                ip, port = result
-            else:
-                QMessageBox.warning(
-                    self, "Сервер недоступен",
-                    f"По адресу «{manual_ip}» сервер не отвечает.\n\n"
-                    "Проверьте IP-адрес и что сервер запущен."
-                )
-                return
-        else:
-            finder = ServerFinder()
-            if finder.find():
-                ip = finder.found_ip
-                port = finder.found_port
-
-        if not ip:
-            QMessageBox.warning(
-                self, "Сервер не найден",
-                "Не удалось найти сервер автоматически.\n\n"
-                "Попросите преподавателя назвать IP-адрес\n"
-                "и введите его в поле «IP-адрес сервера»."
-            )
-            return
-
-        self.api_client = ApiClient(ip, port)
-
-        if not self.api_client.ping():
-            QMessageBox.warning(
-                self, "Сервер недоступен",
-                f"Сервер найден по адресу {ip}:{port}, но не отвечает."
-            )
-            return
-
-        waiting = WaitingDialog(self.api_client, self.fio, self.group_name, self)
-        result = waiting.exec_()
-
-        if result != WaitingDialog.Accepted or not waiting.result:
-            return
-
-        self.quiz_window = QuizWindow(
-            back_callback=self.show,
-            api_client=self.api_client,
-            fio=self.fio,
-            group_name=self.group_name,
-        )
-        self.quiz_window.show()
-        self.hide()
+def make_badge_html(text: str, bg_color: str, text_color: str, font_size: str = "12px") -> str:
+    """????????? ??????????? ???????? ????/??????."""
+    return f"""
+    <span style="
+        background-color: {bg_color};
+        color: {text_color};
+        font-size: {font_size};
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 12px;
+        display: inline-block;
+    ">{text}</span>
+    """

@@ -1,6 +1,19 @@
-HEADER_COLOR = "#1B4332"
-LIGHT_ACCENT = "#95D5B2"
-TEXT_COLOR = "#1B1B1B"
+"""
+????????? HTML-??????? ???????-??????????? ????????????? (???).
+??????????? ?????? ??????? ??? ????? Slate / Emerald.
+"""
+try:
+    from styles import (
+        COLOR_PRIMARY_DARK, COLOR_PRIMARY, COLOR_PRIMARY_PALE,
+        COLOR_BORDER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
+        FONT_FAMILY
+    )
+except ImportError:
+    from ui.styles import (
+        COLOR_PRIMARY_DARK, COLOR_PRIMARY, COLOR_PRIMARY_PALE,
+        COLOR_BORDER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
+        FONT_FAMILY
+    )
 
 
 def build_specs_html(station):
@@ -8,49 +21,69 @@ def build_specs_html(station):
 
     html = f"""
     <style>
+        body {{
+            font-family: {FONT_FAMILY};
+            color: {COLOR_TEXT_PRIMARY};
+            margin: 0;
+            padding: 4px;
+        }}
         h3 {{
-            color: {HEADER_COLOR};
-            font-size: 20px;
-            margin-top: 14px;
-            margin-bottom: 10px;
-            border-bottom: 3px solid {LIGHT_ACCENT};
-            padding-bottom: 6px;
+            color: {COLOR_PRIMARY_DARK};
+            font-size: 18px;
+            font-weight: 700;
+            margin-top: 6px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid {COLOR_PRIMARY_PALE};
         }}
         table {{
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 12px;
-            font-size: 16px;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 8px;
+            font-size: 14px;
+            border: 1px solid {COLOR_BORDER};
+            border-radius: 8px;
+            overflow: hidden;
         }}
         th {{
-            background-color: {HEADER_COLOR};
-            color: white;
-            padding: 16px 14px;
+            background-color: {COLOR_PRIMARY_DARK};
+            color: #FFFFFF;
+            padding: 12px 14px;
             text-align: left;
-            font-size: 16px;
-            font-weight: bold;
-            border: 2px solid #0F2A1D;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
         }}
         td {{
-            padding: 14px;
-            border-bottom: 2px solid #E0E0E0;
-            border-right: 2px solid #EEEEEE;
-            color: {TEXT_COLOR};
+            padding: 11px 14px;
+            border-bottom: 1px solid {COLOR_BORDER};
+            color: {COLOR_TEXT_PRIMARY};
             vertical-align: middle;
-            font-size: 16px;
+            font-size: 14px;
         }}
         tr:nth-child(even) td {{
-            background-color: #F5F5F5;
+            background-color: #F8FAFC;
+        }}
+        tr:last-child td {{
+            border-bottom: none;
+        }}
+        td.name {{
+            color: {COLOR_TEXT_SECONDARY};
+            font-weight: 500;
+            width: 60%;
         }}
         td.value {{
-            font-weight: bold;
+            color: {COLOR_PRIMARY_DARK};
+            font-weight: 700;
+            width: 40%;
         }}
     </style>
-    <h3>Тактико-технические характеристики</h3>
+    <h3>???????-??????????? ?????????????? (???)</h3>
     <table>
     <tr>
-        <th style='width: 65%;'>Характеристика</th>
-        <th style='width: 35%;'>Значение</th>
+        <th style='width: 60%;'>????????</th>
+        <th style='width: 40%;'>????????</th>
     </tr>
     """
 
@@ -58,8 +91,7 @@ def build_specs_html(station):
         unit = spec.get("unit", "").strip()
         name = f"{spec['name']}, {unit}" if unit else spec["name"]
         answer = spec["answer"]
-        html += f"<tr><td>{name}</td><td class='value'>{answer}</td></tr>"
+        html += f"<tr><td class='name'>{name}</td><td class='value'>{answer}</td></tr>"
 
     html += "</table>"
-
     return html

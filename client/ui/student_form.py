@@ -1,23 +1,23 @@
 """
-Диалог ввода ФИО, группы и IP сервера.
-С сохранением последних значений.
+?????? ????? ???, ?????? ? IP ???????.
+? ??????????? ????????? ????????.
 """
 import os
 import json
 
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QMessageBox, QFrame,
+    QPushButton, QMessageBox, QFrame, QGraphicsDropShadowEffect
 )
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QCursor
 
-
-HEADER_COLOR = "#1B4332"
-ACCENT_COLOR = "#2D6A4F"
-ACCENT_HOVER = "#40916C"
-LIGHT_ACCENT = "#95D5B2"
-BG_COLOR = "#FAFAFA"
-TEXT_COLOR = "#1B1B1B"
+from styles import (
+    COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_HOVER, COLOR_PRIMARY_LIGHT,
+    COLOR_PRIMARY_PALE, COLOR_BG_MAIN, COLOR_CARD_BG, COLOR_BORDER,
+    COLOR_BORDER_HOVER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
+    COLOR_TEXT_LIGHT, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE
+)
 
 
 def _config_dir():
@@ -58,9 +58,9 @@ class StudentFormDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Вход в режим контроля")
-        self.setMinimumSize(600, 600)
-        self.setStyleSheet(f"background-color: {BG_COLOR};")
+        self.setWindowTitle("??????????? ?? ???????? ??????")
+        self.setMinimumSize(520, 520)
+        self.setStyleSheet(f"background-color: {COLOR_BG_MAIN};")
 
         self.fio = ""
         self.group = ""
@@ -72,135 +72,105 @@ class StudentFormDialog(QDialog):
         last_group = settings.get("last_group", "")
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(35, 30, 35, 30)
-        layout.setSpacing(12)
+        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setSpacing(16)
 
-        title = QLabel("Введите свои данные")
+        # ???????? ?????
+        card = QFrame()
+        card.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLOR_CARD_BG};
+                border: 1.5px solid {COLOR_BORDER};
+                border-radius: 12px;
+            }}
+        """)
+        shadow = QGraphicsDropShadowEffect(card)
+        shadow.setBlurRadius(16)
+        shadow.setColor(QColor(0, 0, 0, 15))
+        shadow.setOffset(0, 4)
+        card.setGraphicsEffect(shadow)
+
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(24, 22, 24, 22)
+        card_layout.setSpacing(14)
+
+        # ?????????
+        title = QLabel("????????????? ????????????")
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 22px; font-weight: bold;"
-        )
-        layout.addWidget(title)
+        title.setStyleSheet(f"color: {COLOR_PRIMARY_DARK}; font-size: 20px; font-weight: 700; border: none;")
+        card_layout.addWidget(title)
 
-        hint = QLabel(
-            "ФИО и группа будут видны преподавателю\n"
-            "во время прохождения контроля."
-        )
+        hint = QLabel("?????? ????? ???????? ?? ?????? ????????????? ??? ??????? ?????????.")
         hint.setAlignment(Qt.AlignCenter)
-        hint.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 13px;")
-        layout.addWidget(hint)
+        hint.setWordWrap(True)
+        hint.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; font-size: 13px; border: none;")
+        card_layout.addWidget(hint)
 
-        layout.addSpacing(8)
+        card_layout.addSpacing(6)
 
-        fio_label = QLabel("ФИО:")
-        fio_label.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 15px; font-weight: bold;"
-        )
-        layout.addWidget(fio_label)
+        # ???? ???
+        fio_label = QLabel("??? ????????????:")
+        fio_label.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; font-size: 14px; font-weight: 600; border: none;")
+        card_layout.addWidget(fio_label)
 
         self.fio_input = QLineEdit()
-        self.fio_input.setPlaceholderText("Например: Иванов Иван Иванович")
+        self.fio_input.setPlaceholderText("?????? ???? ????????")
         self.fio_input.setText(last_fio)
-        self.fio_input.setMinimumHeight(45)
-        self.fio_input.setStyleSheet(f"""
-            QLineEdit {{
-                font-size: 15px; padding: 5px 12px;
-                border: 2px solid {LIGHT_ACCENT};
-                border-radius: 8px; background-color: white;
-                color: {TEXT_COLOR};
-            }}
-            QLineEdit:focus {{ border-color: {ACCENT_HOVER}; }}
-        """)
-        layout.addWidget(self.fio_input)
+        self.fio_input.setMinimumHeight(42)
+        card_layout.addWidget(self.fio_input)
 
-        group_label = QLabel("Группа:")
-        group_label.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 15px; font-weight: bold;"
-        )
-        layout.addWidget(group_label)
+        # ???? ??????
+        group_label = QLabel("??????? ??????:")
+        group_label.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; font-size: 14px; font-weight: 600; border: none;")
+        card_layout.addWidget(group_label)
 
         self.group_input = QLineEdit()
-        self.group_input.setPlaceholderText("Например: 21-Б")
+        self.group_input.setPlaceholderText("????????: 21-? ??? 302")
         self.group_input.setText(last_group)
-        self.group_input.setMinimumHeight(45)
-        self.group_input.setStyleSheet(f"""
-            QLineEdit {{
-                font-size: 15px; padding: 5px 12px;
-                border: 2px solid {LIGHT_ACCENT};
-                border-radius: 8px; background-color: white;
-                color: {TEXT_COLOR};
-            }}
-            QLineEdit:focus {{ border-color: {ACCENT_HOVER}; }}
-        """)
-        layout.addWidget(self.group_input)
+        self.group_input.setMinimumHeight(42)
+        card_layout.addWidget(self.group_input)
 
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setStyleSheet("color: #DDDDDD;")
-        layout.addWidget(line)
+        # ???????????
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setStyleSheet(f"color: {COLOR_BORDER}; border: none; height: 1px; background-color: {COLOR_BORDER};")
+        card_layout.addWidget(sep)
 
-        ip_hint = QLabel("IP-адрес сервера (если не находит автоматически):")
-        ip_hint.setStyleSheet(
-            f"color: {TEXT_COLOR}; font-size: 13px; font-weight: bold;"
-        )
-        layout.addWidget(ip_hint)
+        # IP ???????
+        ip_label = QLabel("IP-????? ??????? (???????????):")
+        ip_label.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; font-size: 13px; font-weight: 600; border: none;")
+        card_layout.addWidget(ip_label)
 
-        sub_hint = QLabel(
-            "Оставьте пустым — программа попробует найти сервер сама."
-        )
-        sub_hint.setStyleSheet("color: #666666; font-size: 12px;")
-        layout.addWidget(sub_hint)
+        sub_hint = QLabel("???????? ?????? ??? ??????????????? ?????? ? ????????? ????.")
+        sub_hint.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 12px; border: none;")
+        card_layout.addWidget(sub_hint)
 
         self.ip_input = QLineEdit()
-        self.ip_input.setPlaceholderText("Например: 10.18.1.12")
+        self.ip_input.setPlaceholderText("????????: 192.168.1.50")
         self.ip_input.setText(last_ip)
-        self.ip_input.setMinimumHeight(45)
-        self.ip_input.setStyleSheet(f"""
-            QLineEdit {{
-                font-size: 15px; padding: 5px 12px;
-                border: 2px solid {LIGHT_ACCENT};
-                border-radius: 8px; background-color: white;
-                color: {TEXT_COLOR};
-            }}
-            QLineEdit:focus {{ border-color: {ACCENT_HOVER}; }}
-        """)
-        layout.addWidget(self.ip_input)
+        self.ip_input.setMinimumHeight(40)
+        card_layout.addWidget(self.ip_input)
 
-        layout.addStretch()
+        layout.addWidget(card)
 
+        # ?????? ???????
         btns = QHBoxLayout()
-        btns.addStretch()
+        btns.setSpacing(12)
 
-        ok_btn = QPushButton("Продолжить")
-        ok_btn.setMinimumHeight(48)
-        ok_btn.setMinimumWidth(180)
-        ok_btn.setStyleSheet(f"""
-            QPushButton {{
-                font-size: 16px; font-weight: bold;
-                background-color: {ACCENT_COLOR}; color: white;
-                border-radius: 10px; border: none;
-                padding: 8px 20px;
-            }}
-            QPushButton:hover {{ background-color: {ACCENT_HOVER}; }}
-        """)
-        ok_btn.clicked.connect(self.on_ok)
-        btns.addWidget(ok_btn)
-
-        cancel_btn = QPushButton("Отмена")
-        cancel_btn.setMinimumHeight(48)
-        cancel_btn.setMinimumWidth(150)
-        cancel_btn.setStyleSheet("""
-            QPushButton {
-                font-size: 16px; background-color: #757575;
-                color: white; border-radius: 10px; border: none;
-                padding: 8px 20px;
-            }
-            QPushButton:hover { background-color: #616161; }
-        """)
+        cancel_btn = QPushButton("??????")
+        cancel_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        cancel_btn.setMinimumHeight(44)
+        cancel_btn.setStyleSheet(BTN_SECONDARY_STYLE)
         cancel_btn.clicked.connect(self.reject)
-        btns.addWidget(cancel_btn)
+        btns.addWidget(cancel_btn, 1)
 
-        btns.addStretch()
+        ok_btn = QPushButton("???????????? ?")
+        ok_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        ok_btn.setMinimumHeight(44)
+        ok_btn.setStyleSheet(BTN_PRIMARY_STYLE)
+        ok_btn.clicked.connect(self.on_ok)
+        btns.addWidget(ok_btn, 2)
+
         layout.addLayout(btns)
 
         self.fio_input.returnPressed.connect(self.group_input.setFocus)
@@ -213,10 +183,12 @@ class StudentFormDialog(QDialog):
         ip = self.ip_input.text().strip()
 
         if not fio or len(fio) < 3:
-            QMessageBox.warning(self, "Ошибка", "Введите ФИО полностью.")
+            QMessageBox.warning(self, "????????", "??????????, ??????? ??? ???????????? ?????????.")
+            self.fio_input.setFocus()
             return
-        if not group or len(group) < 2:
-            QMessageBox.warning(self, "Ошибка", "Введите номер группы.")
+        if not group or len(group) < 1:
+            QMessageBox.warning(self, "????????", "??????????, ??????? ????? ??????? ??????.")
+            self.group_input.setFocus()
             return
 
         self.fio = fio

@@ -28,6 +28,8 @@ jobs:
           --name RRSTrainer-Client
           --add-data "data;data"
           --add-data "images;images"
+          --add-data "../shared;shared"
+          --paths "../shared"
           --icon icon.ico
           main.py
 

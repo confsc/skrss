@@ -1,19 +1,20 @@
 """
-Окно ожидания контроля.
+???? ???????? ????????.
 """
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox,
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QMessageBox,
+    QFrame, QGraphicsDropShadowEffect
 )
 from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QColor, QCursor
 
-
-HEADER_COLOR = "#1B4332"
-ACCENT_COLOR = "#2D6A4F"
-ACCENT_HOVER = "#40916C"
-LIGHT_ACCENT = "#95D5B2"
-BG_COLOR = "#FAFAFA"
-TEXT_COLOR = "#1B1B1B"
-WARN_COLOR = "#B45309"
+from styles import (
+    COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_HOVER, COLOR_PRIMARY_LIGHT,
+    COLOR_PRIMARY_PALE, COLOR_BG_MAIN, COLOR_CARD_BG, COLOR_BORDER,
+    COLOR_BORDER_HOVER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
+    COLOR_TEXT_LIGHT, COLOR_SUCCESS, COLOR_SUCCESS_BG, COLOR_WARNING, COLOR_WARNING_BG,
+    BTN_SECONDARY_STYLE, make_badge_html
+)
 
 HEARTBEAT_INTERVAL = 30
 SERVER_CHECK_INTERVAL = 5
@@ -29,86 +30,104 @@ class WaitingDialog(QDialog):
         self.result = None
         self.fail_count = 0
 
-        self.setWindowTitle("Ожидание контроля")
-        self.setFixedSize(700, 680)
-        self.setStyleSheet(f"background-color: {BG_COLOR};")
+        self.setWindowTitle("???????? ??????? ???????? ??????")
+        self.setFixedSize(650, 640)
+        self.setStyleSheet(f"background-color: {COLOR_BG_MAIN};")
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 25, 30, 25)
-        layout.setSpacing(12)
+        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setSpacing(16)
 
-        title = QLabel("⏳  Ожидайте")
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 28px; font-weight: bold;"
-        )
-        layout.addWidget(title)
-
-        subtitle = QLabel("Преподаватель скоро запустит контроль")
-        subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 15px;")
-        layout.addWidget(subtitle)
-
-        info_frame = QLabel(
-            f"<b>Курсант:</b> {fio} &nbsp;&nbsp;|&nbsp;&nbsp; "
-            f"<b>Группа:</b> {group_name}"
-        )
-        info_frame.setAlignment(Qt.AlignCenter)
-        info_frame.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 14px; "
-            f"background-color: #E8F5E9; padding: 10px; border-radius: 8px;"
-        )
-        layout.addWidget(info_frame)
-
-        self.status_label = QLabel("✅ Вы подключены к серверу")
-        self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setStyleSheet(f"color: {ACCENT_COLOR}; font-size: 13px;")
-        layout.addWidget(self.status_label)
-
-        hints_title = QLabel("📋  Как правильно записывать ответы")
-        hints_title.setStyleSheet(
-            f"color: {WARN_COLOR}; font-size: 15px; font-weight: bold; "
-            f"padding: 6px;"
-        )
-        layout.addWidget(hints_title)
-
-        hints = QLabel(
-            "• <b>Диапазон</b> — через дефис, без пробелов: <b>390-645</b><br>"
-            "• <b>Дробное число</b> — через точку: <b>2.5</b> (а не 2,5)<br>"
-            "• <b>Мощность</b> — только число, единицу выбрать из списка: "
-            "<b>22</b> + <b>Вт</b><br>"
-            "• <b>Частота</b> — только число, единицу выбрать из списка: "
-            "<b>100</b> + <b>кГц</b><br>"
-            "• <b>Скорость</b> — только число: <b>2048</b> + <b>кбит/с</b><br>"
-            "• <b>Несколько значений</b> — через запятую: "
-            "<b>QPSK, 8PSK</b><br>"
-            "• <b>Без единицы</b> — оставьте поле единицы пустым<br>"
-        )
-        hints.setTextFormat(Qt.RichText)
-        hints.setWordWrap(True)
-        hints.setStyleSheet(
-            f"color: {TEXT_COLOR}; font-size: 13px; line-height: 1.6; "
-            f"background-color: white; padding: 14px; "
-            f"border: 2px solid {LIGHT_ACCENT}; border-radius: 8px;"
-        )
-        layout.addWidget(hints)
-
-        cancel_btn = QPushButton("Отменить и выйти")
-        cancel_btn.setMinimumHeight(45)
-        cancel_btn.setStyleSheet("""
-            QPushButton {
-                font-size: 15px;
-                background-color: #757575;
-                color: white;
-                border-radius: 10px;
-                border: none;
-                padding: 8px 20px;
-            }
-            QPushButton:hover { background-color: #616161; }
+        # ??????? ????????
+        card = QFrame()
+        card.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLOR_CARD_BG};
+                border: 1.5px solid {COLOR_BORDER};
+                border-radius: 12px;
+            }}
         """)
+        shadow = QGraphicsDropShadowEffect(card)
+        shadow.setBlurRadius(16)
+        shadow.setColor(QColor(0, 0, 0, 15))
+        shadow.setOffset(0, 4)
+        card.setGraphicsEffect(shadow)
+
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(24, 22, 24, 22)
+        card_layout.setSpacing(14)
+
+        title = QLabel("? ???????? ?????? ????????")
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet(f"color: {COLOR_PRIMARY_DARK}; font-size: 22px; font-weight: 700; border: none;")
+        card_layout.addWidget(title)
+
+        subtitle = QLabel("????????????? ????????? ??????? ? ???????? ???? ?? ?????? ?????????")
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setWordWrap(True)
+        subtitle.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; font-size: 13px; border: none;")
+        card_layout.addWidget(subtitle)
+
+        # ?????? ? ??????? ????????
+        info_pill = QLabel(f"<b>???????????:</b> {fio} &nbsp;&nbsp;.&nbsp;&nbsp; <b>??????:</b> {group_name}")
+        info_pill.setAlignment(Qt.AlignCenter)
+        info_pill.setStyleSheet(f"""
+            background-color: {COLOR_PRIMARY_PALE};
+            color: {COLOR_PRIMARY_DARK};
+            font-size: 13px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid #B7E4C7;
+        """)
+        card_layout.addWidget(info_pill)
+
+        # ?????? ??????????
+        self.status_label = QLabel("? ?????? ????????? ? ????? ? ???????? ???????")
+        self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setStyleSheet(f"color: {COLOR_SUCCESS}; font-size: 13px; font-weight: 600; border: none;")
+        card_layout.addWidget(self.status_label)
+
+        # ??????? ?? ????? ???????
+        hints_box = QFrame()
+        hints_box.setStyleSheet(f"""
+            QFrame {{
+                background-color: #F8FAFC;
+                border: 1px solid {COLOR_BORDER};
+                border-radius: 8px;
+            }}
+        """)
+        hints_layout = QVBoxLayout(hints_box)
+        hints_layout.setContentsMargins(14, 12, 14, 12)
+        hints_layout.setSpacing(6)
+
+        hints_title = QLabel("?? ??????? ?? ?????? ??????? ?? ???????:")
+        hints_title.setStyleSheet(f"color: {COLOR_PRIMARY_DARK}; font-size: 13px; font-weight: 700; border: none;")
+        hints_layout.addWidget(hints_title)
+
+        hints_text = QLabel(
+            ". <b>???????? ?????</b> - ????? ????? ??? ????????: <b>390-645</b><br>"
+            ". <b>??????? ?????</b> - ????? ?????: <b>2.5</b> (?? ????? ???????)<br>"
+            ". <b>???????? / ??????? / ????????</b> - ????? ? ???? ?????, ??????? ?? ??????<br>"
+            ". <b>????????? ?????????</b> - ????? ???????: <b>QPSK, 8PSK</b><br>"
+            ". <b>??? ???????????</b> - ???? ??????? ????????? ???????? ??????"
+        )
+        hints_text.setTextFormat(Qt.RichText)
+        hints_text.setWordWrap(True)
+        hints_text.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; font-size: 12px; line-height: 1.5; border: none;")
+        hints_layout.addWidget(hints_text)
+
+        card_layout.addWidget(hints_box)
+        layout.addWidget(card)
+
+        # ?????? ??????
+        cancel_btn = QPushButton("???????? ? ?????????")
+        cancel_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        cancel_btn.setMinimumHeight(42)
+        cancel_btn.setStyleSheet(BTN_SECONDARY_STYLE)
         cancel_btn.clicked.connect(self.reject)
         layout.addWidget(cancel_btn, alignment=Qt.AlignCenter)
 
+        # ??????? ?????? (????????? ?????????)
         self.api_client.register(self.fio, self.group_name)
 
         self.timer = QTimer()
@@ -138,24 +157,17 @@ class WaitingDialog(QDialog):
     def check_server(self):
         if self.api_client.ping():
             self.fail_count = 0
-            self.status_label.setText("✅ Вы подключены к серверу")
-            self.status_label.setStyleSheet(
-                f"color: {ACCENT_COLOR}; font-size: 13px;"
-            )
+            self.status_label.setText("? ?????? ????????? ? ????? ? ???????? ???????")
+            self.status_label.setStyleSheet(f"color: {COLOR_SUCCESS}; font-size: 13px; font-weight: 600; border: none;")
         else:
             self.fail_count += 1
-            self.status_label.setText(
-                "⚠ Связь с сервером потеряна. Проверьте соединение."
-            )
-            self.status_label.setStyleSheet(
-                f"color: {WARN_COLOR}; font-size: 13px; font-weight: bold;"
-            )
+            self.status_label.setText("? ????? ? ???????? ????????. ??????? ????????????...")
+            self.status_label.setStyleSheet(f"color: {COLOR_WARNING}; font-size: 13px; font-weight: 700; border: none;")
             if self.fail_count >= 3:
                 QMessageBox.warning(
                     self,
-                    "Сервер недоступен",
-                    "Связь с сервером потеряна.\n\n"
-                    "Программа будет закрыта."
+                    "?????? ??????????",
+                    "????? ? ???????? ????????????? ????????.\n\n????????? ????????? ???? ? ?????? ???????."
                 )
                 self.stop_all()
                 self.reject()

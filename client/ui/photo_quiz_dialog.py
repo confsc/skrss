@@ -1,26 +1,24 @@
 """
-Диалог фото-контроля.
-Только фото + 4 варианта ответа. Без полей ввода.
+?????? ????-???????? (??????????? ??????? ?? ???????? ????).
 """
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QWidget, QSizePolicy, QMessageBox, QGroupBox,
-    QRadioButton, QButtonGroup,
+    QScrollArea, QWidget, QSizePolicy, QMessageBox, QFrame,
+    QRadioButton, QButtonGroup, QGraphicsDropShadowEffect
 )
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QColor, QCursor
+
 from logic.data_loader import resource_path
 from ui.result_dialog import ResultDialog
 
-
-HEADER_COLOR = "#1B4332"
-TEXT_COLOR = "#1B1B1B"
-ACCENT_COLOR = "#2D6A4F"
-ACCENT_HOVER = "#40916C"
-LIGHT_ACCENT = "#95D5B2"
-BG_COLOR = "#FAFAFA"
-DANGER_COLOR = "#991B1B"
-WARN_COLOR = "#B45309"
+from styles import (
+    COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_HOVER, COLOR_PRIMARY_LIGHT,
+    COLOR_PRIMARY_PALE, COLOR_BG_MAIN, COLOR_CARD_BG, COLOR_BORDER,
+    COLOR_BORDER_HOVER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
+    COLOR_TEXT_LIGHT, COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER,
+    BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, make_badge_html
+)
 
 HEARTBEAT_INTERVAL = 30
 STOP_CHECK_INTERVAL = 3
@@ -28,20 +26,6 @@ SERVER_CHECK_INTERVAL = 5
 
 MASTER_MODIFIERS = Qt.ControlModifier | Qt.ShiftModifier
 MASTER_KEY = Qt.Key_F1
-
-SCROLLBAR_STYLE = """
-QScrollBar:vertical {
-    background: #F0F0F0; width: 14px; margin: 0px;
-    border-radius: 7px;
-}
-QScrollBar::handle:vertical {
-    background: #6B8E7B; min-height: 30px;
-    border-radius: 7px; margin: 2px;
-}
-QScrollBar::handle:vertical:hover { background: #4A6B5A; }
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
-QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
-"""
 
 
 def _percent_to_grade(percent):
@@ -56,7 +40,7 @@ def _percent_to_grade(percent):
 
 class PhotoQuizDialog(QDialog):
 
-    def __init__(self, station_name="Фото-контроль",
+    def __init__(self, station_name="????-????????",
                  photo_specs=None,
                  time_limit=None, student_id=None,
                  api_client=None, fio=None, group_name=None,
@@ -81,57 +65,68 @@ class PhotoQuizDialog(QDialog):
         self.photo_groups = {}
         self.photo_result_labels = {}
 
-        self.setWindowTitle(f"Фото-контроль")
-        self.resize(1000, 900)
-        self.setMinimumSize(800, 600)
-        self.setStyleSheet(f"background-color: {BG_COLOR};")
+        self.setWindowTitle("?????????? ????????: ????????????? ???????")
+        self.resize(1050, 850)
+        self.setMinimumSize(850, 600)
+        self.setStyleSheet(f"background-color: {COLOR_BG_MAIN};")
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(28, 22, 28, 22)
+        main_layout.setSpacing(14)
 
-        # ===== Заголовок + таймер =====
-        top = QHBoxLayout()
-        title = QLabel("📷  Угадайте станцию по фотографии")
-        title.setStyleSheet(
-            f"color: {HEADER_COLOR}; font-size: 22px; font-weight: bold; padding: 5px;"
-        )
-        top.addWidget(title)
-        top.addStretch()
+        # ??????? ??????
+        header_card = QFrame()
+        header_card.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLOR_CARD_BG};
+                border: 1.5px solid {COLOR_BORDER};
+                border-radius: 12px;
+                padding: 12px 18px;
+            }}
+        """)
+        h_layout = QHBoxLayout(header_card)
+        h_layout.setContentsMargins(0, 0, 0, 0)
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(2)
+
+        badge_lbl = QLabel(make_badge_html("?????????? ?????????????", COLOR_PRIMARY_PALE, COLOR_PRIMARY_DARK))
+        badge_lbl.setStyleSheet("border: none;")
+        title_col.addWidget(badge_lbl)
+
+        title = QLabel(f"?????????? ???????? ?? ???????? ???? ({len(self.photo_specs)} ????????)")
+        title.setStyleSheet(f"color: {COLOR_PRIMARY_DARK}; font-size: 19px; font-weight: 700; border: none;")
+        title_col.addWidget(title)
+
+        h_layout.addLayout(title_col)
+        h_layout.addStretch()
 
         if self.time_limit > 0:
-            self.timer_label = QLabel(f"⏱ {self._fmt_time(self.time_limit)}")
+            self.timer_label = QLabel(f"? {self._fmt_time(self.time_limit)}")
             self.timer_label.setStyleSheet(f"""
-                color: white; background-color: {ACCENT_COLOR};
-                font-size: 20px; font-weight: bold;
-                padding: 10px 20px; border-radius: 10px;
+                color: #FFFFFF;
+                background-color: {COLOR_PRIMARY};
+                font-size: 18px;
+                font-weight: 700;
+                padding: 8px 18px;
+                border-radius: 8px;
+                border: none;
             """)
-            top.addWidget(self.timer_label)
+            h_layout.addWidget(self.timer_label)
 
-        main_layout.addLayout(top)
+        main_layout.addWidget(header_card)
 
-        hint = QLabel(
-            f"Вопросов: <b>{len(self.photo_specs)}</b>  |  "
-            f"Время: <b>{self._fmt_time(self.time_limit)}</b>"
-        )
-        hint.setTextFormat(Qt.RichText)
-        hint.setStyleSheet(f"color: {TEXT_COLOR}; font-size: 14px; padding: 5px;")
-        main_layout.addWidget(hint)
-
-        # ===== Прокрутка с фото-вопросами =====
+        # ??????? ????????? ? ????-?????????
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        scroll.setStyleSheet(f"""
-            QScrollArea {{ border: none; background-color: {BG_COLOR}; }}
-            {SCROLLBAR_STYLE}
-        """)
+        scroll.setStyleSheet(f"QScrollArea {{ border: 1.5px solid {COLOR_BORDER}; border-radius: 12px; background-color: {COLOR_CARD_BG}; }}")
 
         inner = QWidget()
-        inner.setStyleSheet(f"background-color: {BG_COLOR};")
+        inner.setStyleSheet(f"background-color: {COLOR_CARD_BG};")
         inner_layout = QVBoxLayout(inner)
-        inner_layout.setContentsMargins(0, 0, 0, 0)
-        inner_layout.setSpacing(15)
+        inner_layout.setContentsMargins(18, 16, 18, 16)
+        inner_layout.setSpacing(16)
 
         for idx, photo in enumerate(self.photo_specs):
             self._add_photo_question(inner_layout, idx, photo)
@@ -140,43 +135,31 @@ class PhotoQuizDialog(QDialog):
         scroll.setWidget(inner)
         main_layout.addWidget(scroll)
 
-        # ===== Кнопки =====
+        # ??????
         btns = QHBoxLayout()
-        btns.addStretch()
+        btns.setSpacing(12)
 
-        self.check_btn = QPushButton("Проверить")
-        self.check_btn.setMinimumHeight(46)
-        self.check_btn.setMinimumWidth(170)
-        self.check_btn.setStyleSheet(f"""
-            QPushButton {{
-                font-size: 16px; font-weight: bold;
-                background-color: {ACCENT_COLOR}; color: white;
-                border-radius: 10px; border: none;
-                padding: 8px 25px;
-            }}
-            QPushButton:hover {{ background-color: {ACCENT_HOVER}; }}
-        """)
-        self.check_btn.clicked.connect(self.check)
-        btns.addWidget(self.check_btn)
-
-        cancel_btn = QPushButton("Закрыть")
-        cancel_btn.setMinimumHeight(46)
-        cancel_btn.setMinimumWidth(140)
-        cancel_btn.setStyleSheet("""
-            QPushButton {
-                font-size: 16px; background-color: #757575;
-                color: white; border-radius: 10px; border: none;
-                padding: 8px 25px;
-            }
-            QPushButton:hover { background-color: #616161; }
-        """)
+        cancel_btn = QPushButton("???????? ? ?????")
+        cancel_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        cancel_btn.setMinimumHeight(44)
+        cancel_btn.setMinimumWidth(150)
+        cancel_btn.setStyleSheet(BTN_SECONDARY_STYLE)
         cancel_btn.clicked.connect(self.reject)
         btns.addWidget(cancel_btn)
 
         btns.addStretch()
+
+        self.check_btn = QPushButton("????????? ? ????????? ?")
+        self.check_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        self.check_btn.setMinimumHeight(44)
+        self.check_btn.setMinimumWidth(220)
+        self.check_btn.setStyleSheet(BTN_PRIMARY_STYLE)
+        self.check_btn.clicked.connect(self.check)
+        btns.addWidget(self.check_btn)
+
         main_layout.addLayout(btns)
 
-        # ===== Таймеры =====
+        # ???????
         if self.time_limit > 0:
             self.timer = QTimer()
             self.timer.timeout.connect(self.tick)
@@ -197,82 +180,94 @@ class PhotoQuizDialog(QDialog):
             self.server_check_timer.start(SERVER_CHECK_INTERVAL * 1000)
 
     def _add_photo_question(self, parent_layout, idx, photo):
-        group = QGroupBox(f"Вопрос {idx + 1}")
-        group.setStyleSheet(f"""
-            QGroupBox {{
-                font-size: 15px;
-                font-weight: bold;
-                color: {HEADER_COLOR};
-                background-color: white;
-                border: 2px solid {LIGHT_ACCENT};
+        card = QFrame()
+        card.setStyleSheet(f"""
+            QFrame {{
+                background-color: #F8FAFC;
+                border: 1.5px solid {COLOR_BORDER};
                 border-radius: 10px;
-                margin-top: 10px;
-                padding: 12px;
-            }}
-            QGroupBox::title {{
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px;
-                color: {HEADER_COLOR};
             }}
         """)
-        group_layout = QVBoxLayout(group)
-        group_layout.setContentsMargins(15, 15, 15, 15)
-        group_layout.setSpacing(10)
+        c_layout = QVBoxLayout(card)
+        c_layout.setContentsMargins(18, 14, 18, 14)
+        c_layout.setSpacing(10)
 
-        question_label = QLabel(photo.get("question", "Какая это станция?"))
-        question_label.setStyleSheet(
-            f"color: {TEXT_COLOR}; font-size: 15px; font-weight: bold; padding: 5px;"
-        )
-        group_layout.addWidget(question_label)
+        header_row = QHBoxLayout()
+        q_title = QLabel(f"?????? ?{idx + 1}: {photo.get('question', '????? ??????? ?????????? ?? ???????????')}")
+        q_title.setStyleSheet(f"font-size: 15px; font-weight: 700; color: {COLOR_PRIMARY_DARK}; border: none;")
+        header_row.addWidget(q_title)
+        header_row.addStretch()
+
+        res_lbl = QLabel("")
+        res_lbl.setStyleSheet("font-size: 18px; font-weight: 700; border: none;")
+        self.photo_result_labels[idx] = res_lbl
+        header_row.addWidget(res_lbl)
+        c_layout.addLayout(header_row)
+
+        content_row = QHBoxLayout()
+        content_row.setSpacing(20)
+
+        # ???? ? ?????
+        img_frame = QFrame()
+        img_frame.setStyleSheet(f"background-color: #FFFFFF; border: 1px solid {COLOR_BORDER}; border-radius: 8px;")
+        f_layout = QVBoxLayout(img_frame)
+        f_layout.setContentsMargins(6, 6, 6, 6)
 
         image_label = QLabel()
         image_label.setAlignment(Qt.AlignCenter)
-        image_label.setMinimumHeight(240)
+        image_label.setMinimumHeight(200)
+        image_label.setMinimumWidth(320)
+        image_label.setStyleSheet("border: none; background: transparent;")
 
         img_path = resource_path(photo.get("image", ""))
         pix = QPixmap(img_path)
         if not pix.isNull():
-            image_label.setPixmap(
-                pix.scaled(500, 280, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            )
+            image_label.setPixmap(pix.scaled(380, 220, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         else:
-            image_label.setText("(фото не найдено)")
-            image_label.setStyleSheet(
-                "color: #C62828; padding: 10px; font-size: 14px;"
-            )
+            image_label.setText("?? ?????????? ???????????")
+            image_label.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none;")
 
-        group_layout.addWidget(image_label)
+        f_layout.addWidget(image_label)
+        content_row.addWidget(img_frame, 1)
 
-        options = photo.get("options", [])
-        btn_group = QButtonGroup(group)
-        self.photo_groups[idx] = btn_group
+        # ???????? ?????? (Radio buttons)
+        options_col = QVBoxLayout()
+        options_col.setSpacing(8)
+        btn_group = QButtonGroup(self)
 
-        for opt in options:
-            rb = QRadioButton(opt)
-            rb.setStyleSheet(f"""
+        for opt_idx, option in enumerate(photo.get("options", [])):
+            radio = QRadioButton(option)
+            radio.setCursor(QCursor(Qt.PointingHandCursor))
+            radio.setStyleSheet(f"""
                 QRadioButton {{
-                    font-size: 15px;
-                    color: {TEXT_COLOR};
-                    padding: 6px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: {COLOR_TEXT_PRIMARY};
+                    padding: 8px 12px;
+                    background-color: #FFFFFF;
+                    border: 1px solid {COLOR_BORDER};
+                    border-radius: 8px;
                 }}
-                QRadioButton::indicator {{
-                    width: 16px;
-                    height: 16px;
+                QRadioButton:hover {{
+                    border-color: {COLOR_PRIMARY_HOVER};
+                    background-color: {COLOR_PRIMARY_PALE};
+                }}
+                QRadioButton:checked {{
+                    border: 2px solid {COLOR_PRIMARY};
+                    font-weight: 700;
+                    color: {COLOR_PRIMARY_DARK};
+                    background-color: {COLOR_PRIMARY_PALE};
                 }}
             """)
-            btn_group.addButton(rb)
-            group_layout.addWidget(rb)
+            btn_group.addButton(radio, opt_idx)
+            options_col.addWidget(radio)
 
-        result_lbl = QLabel("")
-        result_lbl.setAlignment(Qt.AlignCenter)
-        result_lbl.setStyleSheet("font-size: 22px; font-weight: bold;")
-        self.photo_result_labels[idx] = result_lbl
-        group_layout.addWidget(result_lbl)
+        options_col.addStretch()
+        content_row.addLayout(options_col, 1)
+        c_layout.addLayout(content_row)
 
-        parent_layout.addWidget(group)
-
-    # ============ СЕКРЕТНАЯ КЛАВИША ============
+        self.photo_groups[idx] = btn_group
+        parent_layout.addWidget(card)
 
     def keyPressEvent(self, event):
         if (
@@ -286,16 +281,14 @@ class PhotoQuizDialog(QDialog):
 
     def autofill_correct_answers(self):
         for idx, photo in enumerate(self.photo_specs):
-            correct = photo.get("answer", "")
-            btn_group = self.photo_groups.get(idx)
-            if not btn_group:
+            correct = photo.get("correct_answer", "")
+            group = self.photo_groups.get(idx)
+            if not group:
                 continue
-            for btn in btn_group.buttons():
-                if btn.text().strip() == correct.strip():
+            for btn in group.buttons():
+                if btn.text().strip().lower() == correct.strip().lower():
                     btn.setChecked(True)
                     break
-
-    # ============ HEARTBEAT / ПРОВЕРКА СЕРВЕРА ============
 
     def send_heartbeat(self):
         if self.api_client:
@@ -320,9 +313,8 @@ class PhotoQuizDialog(QDialog):
                 self.stop_all_timers()
                 self.finished = True
                 QMessageBox.warning(
-                    self,
-                    "Сервер недоступен",
-                    "Связь с сервером потеряна.\n\nРабота остановлена."
+                    self, "?????? ??????????",
+                    "????? ? ???????? ????????????? ????????.\n\n?????? ???????????."
                 )
                 self.reject()
 
@@ -341,11 +333,9 @@ class PhotoQuizDialog(QDialog):
             self.forced_stop = True
             self.stop_all_timers()
             self.finished = True
-
             QMessageBox.warning(
-                self,
-                "Контроль завершён",
-                "Контроль завершён преподавателем.\n\nРабота остановлена."
+                self, "???????? ????????",
+                "???????? ???????? ??????????????.\n\n?????? ???????????."
             )
             self.reject()
 
@@ -360,8 +350,6 @@ class PhotoQuizDialog(QDialog):
                 except Exception:
                     pass
 
-    # ============ ТАЙМЕР ============
-
     def _fmt_time(self, sec):
         m = sec // 60
         s = sec % 60
@@ -369,20 +357,27 @@ class PhotoQuizDialog(QDialog):
 
     def tick(self):
         self.remaining -= 1
-        self.timer_label.setText(f"⏱ {self._fmt_time(max(0, self.remaining))}")
+        self.timer_label.setText(f"? {self._fmt_time(max(0, self.remaining))}")
 
-        if self.remaining <= 60:
+        if self.remaining <= 60 and self.remaining > 10:
             self.timer_label.setStyleSheet(f"""
-                color: white; background-color: {WARN_COLOR};
-                font-size: 20px; font-weight: bold;
-                padding: 10px 20px; border-radius: 10px;
+                color: #FFFFFF;
+                background-color: {COLOR_WARNING};
+                font-size: 18px;
+                font-weight: 700;
+                padding: 8px 18px;
+                border-radius: 8px;
             """)
-        if self.remaining <= 10:
+        elif self.remaining <= 10:
             self.timer_label.setStyleSheet(f"""
-                color: white; background-color: {DANGER_COLOR};
-                font-size: 20px; font-weight: bold;
-                padding: 10px 20px; border-radius: 10px;
+                color: #FFFFFF;
+                background-color: {COLOR_DANGER};
+                font-size: 18px;
+                font-weight: 700;
+                padding: 8px 18px;
+                border-radius: 8px;
             """)
+
         if self.remaining <= 0:
             self.timer.stop()
             self.time_out()
@@ -391,10 +386,8 @@ class PhotoQuizDialog(QDialog):
         if self.finished:
             return
         self.finished = True
-        QMessageBox.warning(self, "Время вышло", "Время истекло. Тест завершён.")
+        QMessageBox.warning(self, "????? ?????", "????? ???????????? ???????. ?????? ???????????? ?? ????????.")
         self.check(auto=True)
-
-    # ============ ПРОВЕРКА ============
 
     def check(self, auto=False):
         if self.finished and not auto:
@@ -405,58 +398,47 @@ class PhotoQuizDialog(QDialog):
         errors = []
         correct_count = 0
         total = len(self.photo_specs)
-        max_score = float(total)
-        total_score = 0.0
 
         for idx, photo in enumerate(self.photo_specs):
-            correct = photo.get("answer", "").strip()
-            btn_group = self.photo_groups.get(idx)
-            result_lbl = self.photo_result_labels.get(idx)
+            group = self.photo_groups.get(idx)
+            selected_btn = group.checkedButton() if group else None
+            user_ans = selected_btn.text().strip() if selected_btn else ""
+            correct_ans = photo.get("correct_answer", "").strip()
 
-            user_answer = ""
-            if btn_group:
-                checked = btn_group.checkedButton()
-                if checked:
-                    user_answer = checked.text().strip()
-
-            if user_answer and user_answer == correct:
+            if user_ans and user_ans.lower() == correct_ans.lower():
                 correct_count += 1
-                total_score += 1.0
-                if result_lbl:
-                    result_lbl.setText("✔")
-                    result_lbl.setStyleSheet(
-                        "color: #2E7D32; font-size: 24px; font-weight: bold;"
-                    )
+                if idx in self.photo_result_labels:
+                    self.photo_result_labels[idx].setText("?")
+                    self.photo_result_labels[idx].setStyleSheet(f"color: {COLOR_SUCCESS};")
             else:
                 errors.append({
-                    "name": f"Вопрос {idx + 1} (фото)",
-                    "user": user_answer if user_answer else "—",
-                    "correct": correct,
+                    "name": f"?????? ?{idx + 1} ({photo.get('station_name', '???????')})",
+                    "user": user_ans if user_ans else "?? ??????",
+                    "correct": correct_ans,
                 })
-                if result_lbl:
-                    result_lbl.setText("✘")
-                    result_lbl.setStyleSheet(
-                        "color: #C62828; font-size: 24px; font-weight: bold;"
-                    )
+                if idx in self.photo_result_labels:
+                    self.photo_result_labels[idx].setText("?")
+                    self.photo_result_labels[idx].setStyleSheet(f"color: {COLOR_DANGER};")
 
-        percent = (total_score / max_score * 100) if max_score > 0 else 0
+        percent = (correct_count / total * 100) if total > 0 else 0
+        grade = _percent_to_grade(percent)
 
         self.result_data = {
             "correct_count": correct_count,
             "total": total,
             "percent": percent,
-            "grade": _percent_to_grade(percent),
+            "grade": grade,
             "errors": errors,
         }
 
         if self.api_client and self.student_id:
             duration = self.time_limit - max(0, self.remaining)
             self.api_client.finish_quiz(
-                self.student_id, correct_count, total_score, percent, duration
+                self.student_id, correct_count, float(correct_count), percent, duration
             )
 
         dialog = ResultDialog(
-            station_name=self.station_name,
+            station_name="????-???????? ???????",
             correct=correct_count,
             total=total,
             percent=percent,
