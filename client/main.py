@@ -27,7 +27,7 @@ def resource_path(relative_path):
 def main():
     check_single_instance()
 
-    # ????????? ????????? High-DPI ??????? ?? ???????? QApplication
+    # Включение поддержки High-DPI экранов до создания QApplication
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 

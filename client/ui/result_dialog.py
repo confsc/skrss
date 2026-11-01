@@ -1,5 +1,5 @@
 """
-?????????? ???? ??????????? ??????????? ???????????? / ????????.
+Диалоговое окно отображения результатов тестирования / контроля.
 """
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -20,19 +20,19 @@ from styles import (
 
 def _percent_to_grade(percent):
     if percent >= 90:
-        return 5, "???????", COLOR_SUCCESS, COLOR_SUCCESS_BG
+        return 5, "ОТЛИЧНО", COLOR_SUCCESS, COLOR_SUCCESS_BG
     if percent >= 70:
-        return 4, "??????", "#15803D", "#DCFCE7"
+        return 4, "ХОРОШО", "#15803D", "#DCFCE7"
     if percent >= 50:
-        return 3, "?????????????????", COLOR_WARNING, COLOR_WARNING_BG
-    return 2, "?? ???????", COLOR_DANGER, COLOR_DANGER_BG
+        return 3, "УДОВЛЕТВОРИТЕЛЬНО", COLOR_WARNING, COLOR_WARNING_BG
+    return 2, "НЕ ЗАЧТЕНО", COLOR_DANGER, COLOR_DANGER_BG
 
 
 class ResultDialog(QDialog):
 
     def __init__(self, station_name, correct, total, percent, errors, is_control=False):
         super().__init__()
-        self.setWindowTitle("?????????? ???????? ??????")
+        self.setWindowTitle("Результаты контроля знаний")
         self.setFixedSize(560, 560)
         self.setStyleSheet(f"background-color: {COLOR_BG_MAIN};")
 
@@ -43,7 +43,7 @@ class ResultDialog(QDialog):
         layout.setContentsMargins(30, 26, 30, 26)
         layout.setSpacing(16)
 
-        # ??????? ???????? ???????????
+        # Главная карточка результатов
         card = QFrame()
         card.setStyleSheet(f"""
             QFrame {{
@@ -62,20 +62,20 @@ class ResultDialog(QDialog):
         card_layout.setContentsMargins(24, 22, 24, 22)
         card_layout.setSpacing(14)
 
-        # ????? ? ???????
-        mode_str = "?????????? / ????? ????????" if is_control else "???????????? ??????"
+        # Режим и станция
+        mode_str = "АТТЕСТАЦИЯ / РЕЖИМ КОНТРОЛЯ" if is_control else "САМОПРОВЕРКА ЗНАНИЙ"
         mode_lbl = QLabel(mode_str)
         mode_lbl.setAlignment(Qt.AlignCenter)
         mode_lbl.setStyleSheet(f"color: {COLOR_PRIMARY}; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; border: none;")
         card_layout.addWidget(mode_lbl)
 
-        station_lbl = QLabel(station_name if station_name else "???????? ????")
+        station_lbl = QLabel(station_name if station_name else "Итоговый тест")
         station_lbl.setAlignment(Qt.AlignCenter)
         station_lbl.setWordWrap(True)
         station_lbl.setStyleSheet(f"color: {COLOR_PRIMARY_DARK}; font-size: 18px; font-weight: 700; border: none;")
         card_layout.addWidget(station_lbl)
 
-        # ??????????? ???? ??????
+        # Центральный блок оценки
         grade_box = QFrame()
         grade_box.setStyleSheet(f"""
             QFrame {{
@@ -101,31 +101,31 @@ class ResultDialog(QDialog):
 
         card_layout.addWidget(grade_box)
 
-        # ??????????: ????? ? ????????
+        # Статистика: Баллы и проценты
         stats_layout = QHBoxLayout()
         stats_layout.setSpacing(12)
 
-        # ?????? ?????????? ???????
+        # Плашка правильных ответов
         box_score = QFrame()
         box_score.setStyleSheet(f"background-color: #F8FAFC; border: 1px solid {COLOR_BORDER}; border-radius: 8px; padding: 8px;")
         bs_layout = QVBoxLayout(box_score)
         bs_layout.setAlignment(Qt.AlignCenter)
-        bs_val = QLabel(f"{correct} ?? {total}")
+        bs_val = QLabel(f"{correct} из {total}")
         bs_val.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {COLOR_TEXT_PRIMARY}; border: none;")
-        bs_lbl = QLabel("?????????? ???????")
+        bs_lbl = QLabel("Правильных ответов")
         bs_lbl.setStyleSheet(f"font-size: 11px; color: {COLOR_TEXT_SECONDARY}; border: none;")
         bs_layout.addWidget(bs_val, 0, Qt.AlignCenter)
         bs_layout.addWidget(bs_lbl, 0, Qt.AlignCenter)
         stats_layout.addWidget(box_score)
 
-        # ?????? ?????????
+        # Плашка процентов
         box_percent = QFrame()
         box_percent.setStyleSheet(f"background-color: #F8FAFC; border: 1px solid {COLOR_BORDER}; border-radius: 8px; padding: 8px;")
         bp_layout = QVBoxLayout(box_percent)
         bp_layout.setAlignment(Qt.AlignCenter)
         bp_val = QLabel(f"{percent:.1f}%")
         bp_val.setStyleSheet(f"font-size: 18px; font-weight: 700; color: {COLOR_PRIMARY_DARK}; border: none;")
-        bp_lbl = QLabel("??????? ??????????")
+        bp_lbl = QLabel("Процент успешности")
         bp_lbl.setStyleSheet(f"font-size: 11px; color: {COLOR_TEXT_SECONDARY}; border: none;")
         bp_layout.addWidget(bp_val, 0, Qt.AlignCenter)
         bp_layout.addWidget(bp_lbl, 0, Qt.AlignCenter)
@@ -134,12 +134,12 @@ class ResultDialog(QDialog):
         card_layout.addLayout(stats_layout)
         layout.addWidget(card)
 
-        # ??????
+        # Кнопки
         btns = QHBoxLayout()
         btns.setSpacing(12)
 
         if errors:
-            err_btn = QPushButton(f"?????? ?????? ({len(errors)})")
+            err_btn = QPushButton(f"Разбор ошибок ({len(errors)})")
             err_btn.setCursor(QCursor(Qt.PointingHandCursor))
             err_btn.setMinimumHeight(44)
             err_btn.setStyleSheet(f"""
@@ -159,7 +159,7 @@ class ResultDialog(QDialog):
             err_btn.clicked.connect(self.show_errors)
             btns.addWidget(err_btn, 1)
 
-        close_btn = QPushButton("?????????")
+        close_btn = QPushButton("Завершить")
         close_btn.setCursor(QCursor(Qt.PointingHandCursor))
         close_btn.setMinimumHeight(44)
         close_btn.setStyleSheet(BTN_PRIMARY_STYLE)
@@ -176,7 +176,7 @@ class ErrorsDialog(QDialog):
 
     def __init__(self, errors, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("????????? ?????? ?????????? ??????")
+        self.setWindowTitle("Детальный разбор допущенных ошибок")
         self.resize(720, 580)
         self.setStyleSheet(f"background-color: {COLOR_BG_MAIN};")
 
@@ -184,7 +184,7 @@ class ErrorsDialog(QDialog):
         layout.setContentsMargins(24, 20, 24, 20)
         layout.setSpacing(14)
 
-        title = QLabel(f"?????? ???????? ??????? (?????: {len(errors)})")
+        title = QLabel(f"Список неверных ответов (всего: {len(errors)})")
         title.setStyleSheet(f"color: {COLOR_PRIMARY_DARK}; font-size: 18px; font-weight: 700;")
         layout.addWidget(title)
 
@@ -219,11 +219,11 @@ class ErrorsDialog(QDialog):
             ans_row = QHBoxLayout()
             ans_row.setSpacing(16)
 
-            user_lbl = QLabel(f"??? ?????: <span style='color:{COLOR_DANGER}; font-weight:600;'>{err['user'] or '-'}</span>")
+            user_lbl = QLabel(f"Ваш ответ: <span style='color:{COLOR_DANGER}; font-weight:600;'>{err['user'] or '—'}</span>")
             user_lbl.setStyleSheet("font-size: 13px; border: none;")
             ans_row.addWidget(user_lbl)
 
-            corr_lbl = QLabel(f"?????????: <span style='color:{COLOR_SUCCESS}; font-weight:700;'>{err['correct']}</span>")
+            corr_lbl = QLabel(f"Правильно: <span style='color:{COLOR_SUCCESS}; font-weight:700;'>{err['correct']}</span>")
             corr_lbl.setStyleSheet("font-size: 13px; border: none;")
             ans_row.addWidget(corr_lbl)
             ans_row.addStretch()
@@ -235,7 +235,7 @@ class ErrorsDialog(QDialog):
         scroll.setWidget(inner)
         layout.addWidget(scroll)
 
-        close_btn = QPushButton("???????, ???????")
+        close_btn = QPushButton("Понятно, закрыть")
         close_btn.setCursor(QCursor(Qt.PointingHandCursor))
         close_btn.setMinimumHeight(40)
         close_btn.setMinimumWidth(160)

@@ -1,5 +1,5 @@
 """
-?????? ????-???????? (??????????? ??????? ?? ???????? ????).
+Диалог фото-контроля (определение станции по внешнему виду).
 """
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -40,7 +40,7 @@ def _percent_to_grade(percent):
 
 class PhotoQuizDialog(QDialog):
 
-    def __init__(self, station_name="????-????????",
+    def __init__(self, station_name="Фото-контроль",
                  photo_specs=None,
                  time_limit=None, student_id=None,
                  api_client=None, fio=None, group_name=None,
@@ -65,7 +65,7 @@ class PhotoQuizDialog(QDialog):
         self.photo_groups = {}
         self.photo_result_labels = {}
 
-        self.setWindowTitle("?????????? ????????: ????????????? ???????")
+        self.setWindowTitle("Визуальный контроль: Распознавание станций")
         self.resize(1050, 850)
         self.setMinimumSize(850, 600)
         self.setStyleSheet(f"background-color: {COLOR_BG_MAIN};")
@@ -74,7 +74,7 @@ class PhotoQuizDialog(QDialog):
         main_layout.setContentsMargins(28, 22, 28, 22)
         main_layout.setSpacing(14)
 
-        # ??????? ??????
+        # Верхняя плашка
         header_card = QFrame()
         header_card.setStyleSheet(f"""
             QFrame {{
@@ -90,11 +90,11 @@ class PhotoQuizDialog(QDialog):
         title_col = QVBoxLayout()
         title_col.setSpacing(2)
 
-        badge_lbl = QLabel(make_badge_html("?????????? ?????????????", COLOR_PRIMARY_PALE, COLOR_PRIMARY_DARK))
+        badge_lbl = QLabel(make_badge_html("Визуальное распознавание", COLOR_PRIMARY_PALE, COLOR_PRIMARY_DARK))
         badge_lbl.setStyleSheet("border: none;")
         title_col.addWidget(badge_lbl)
 
-        title = QLabel(f"?????????? ???????? ?? ???????? ???? ({len(self.photo_specs)} ????????)")
+        title = QLabel(f"Определите комплекс по внешнему виду ({len(self.photo_specs)} вопросов)")
         title.setStyleSheet(f"color: {COLOR_PRIMARY_DARK}; font-size: 19px; font-weight: 700; border: none;")
         title_col.addWidget(title)
 
@@ -102,7 +102,7 @@ class PhotoQuizDialog(QDialog):
         h_layout.addStretch()
 
         if self.time_limit > 0:
-            self.timer_label = QLabel(f"? {self._fmt_time(self.time_limit)}")
+            self.timer_label = QLabel(f"⏱ {self._fmt_time(self.time_limit)}")
             self.timer_label.setStyleSheet(f"""
                 color: #FFFFFF;
                 background-color: {COLOR_PRIMARY};
@@ -116,7 +116,7 @@ class PhotoQuizDialog(QDialog):
 
         main_layout.addWidget(header_card)
 
-        # ??????? ????????? ? ????-?????????
+        # Область прокрутки с фото-вопросами
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -135,11 +135,11 @@ class PhotoQuizDialog(QDialog):
         scroll.setWidget(inner)
         main_layout.addWidget(scroll)
 
-        # ??????
+        # Кнопки
         btns = QHBoxLayout()
         btns.setSpacing(12)
 
-        cancel_btn = QPushButton("???????? ? ?????")
+        cancel_btn = QPushButton("Прервать и выйти")
         cancel_btn.setCursor(QCursor(Qt.PointingHandCursor))
         cancel_btn.setMinimumHeight(44)
         cancel_btn.setMinimumWidth(150)
@@ -149,7 +149,7 @@ class PhotoQuizDialog(QDialog):
 
         btns.addStretch()
 
-        self.check_btn = QPushButton("????????? ? ????????? ?")
+        self.check_btn = QPushButton("Завершить и проверить →")
         self.check_btn.setCursor(QCursor(Qt.PointingHandCursor))
         self.check_btn.setMinimumHeight(44)
         self.check_btn.setMinimumWidth(220)
@@ -159,7 +159,7 @@ class PhotoQuizDialog(QDialog):
 
         main_layout.addLayout(btns)
 
-        # ???????
+        # Таймеры
         if self.time_limit > 0:
             self.timer = QTimer()
             self.timer.timeout.connect(self.tick)
@@ -193,7 +193,7 @@ class PhotoQuizDialog(QDialog):
         c_layout.setSpacing(10)
 
         header_row = QHBoxLayout()
-        q_title = QLabel(f"?????? ?{idx + 1}: {photo.get('question', '????? ??????? ?????????? ?? ???????????')}")
+        q_title = QLabel(f"Вопрос №{idx + 1}: {photo.get('question', 'Какая станция изображена на фотографии?')}")
         q_title.setStyleSheet(f"font-size: 15px; font-weight: 700; color: {COLOR_PRIMARY_DARK}; border: none;")
         header_row.addWidget(q_title)
         header_row.addStretch()
@@ -207,7 +207,7 @@ class PhotoQuizDialog(QDialog):
         content_row = QHBoxLayout()
         content_row.setSpacing(20)
 
-        # ???? ? ?????
+        # Фото в рамке
         img_frame = QFrame()
         img_frame.setStyleSheet(f"background-color: #FFFFFF; border: 1px solid {COLOR_BORDER}; border-radius: 8px;")
         f_layout = QVBoxLayout(img_frame)
@@ -224,13 +224,13 @@ class PhotoQuizDialog(QDialog):
         if not pix.isNull():
             image_label.setPixmap(pix.scaled(380, 220, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         else:
-            image_label.setText("?? ?????????? ???????????")
+            image_label.setText("📷 Фотография отсутствует")
             image_label.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; border: none;")
 
         f_layout.addWidget(image_label)
         content_row.addWidget(img_frame, 1)
 
-        # ???????? ?????? (Radio buttons)
+        # Варианты ответа (Radio buttons)
         options_col = QVBoxLayout()
         options_col.setSpacing(8)
         btn_group = QButtonGroup(self)
@@ -313,8 +313,8 @@ class PhotoQuizDialog(QDialog):
                 self.stop_all_timers()
                 self.finished = True
                 QMessageBox.warning(
-                    self, "?????? ??????????",
-                    "????? ? ???????? ????????????? ????????.\n\n?????? ???????????."
+                    self, "Сервер недоступен",
+                    "Связь с сервером преподавателя потеряна.\n\nРабота остановлена."
                 )
                 self.reject()
 
@@ -334,8 +334,8 @@ class PhotoQuizDialog(QDialog):
             self.stop_all_timers()
             self.finished = True
             QMessageBox.warning(
-                self, "???????? ????????",
-                "???????? ???????? ??????????????.\n\n?????? ???????????."
+                self, "Контроль завершён",
+                "Контроль завершён преподавателем.\n\nРабота остановлена."
             )
             self.reject()
 
@@ -357,7 +357,7 @@ class PhotoQuizDialog(QDialog):
 
     def tick(self):
         self.remaining -= 1
-        self.timer_label.setText(f"? {self._fmt_time(max(0, self.remaining))}")
+        self.timer_label.setText(f"⏱ {self._fmt_time(max(0, self.remaining))}")
 
         if self.remaining <= 60 and self.remaining > 10:
             self.timer_label.setStyleSheet(f"""
@@ -386,7 +386,7 @@ class PhotoQuizDialog(QDialog):
         if self.finished:
             return
         self.finished = True
-        QMessageBox.warning(self, "????? ?????", "????? ???????????? ???????. ?????? ???????????? ?? ????????.")
+        QMessageBox.warning(self, "Время вышло", "Время тестирования истекло. Ответы отправляются на проверку.")
         self.check(auto=True)
 
     def check(self, auto=False):
@@ -408,16 +408,16 @@ class PhotoQuizDialog(QDialog):
             if user_ans and user_ans.lower() == correct_ans.lower():
                 correct_count += 1
                 if idx in self.photo_result_labels:
-                    self.photo_result_labels[idx].setText("?")
+                    self.photo_result_labels[idx].setText("✔")
                     self.photo_result_labels[idx].setStyleSheet(f"color: {COLOR_SUCCESS};")
             else:
                 errors.append({
-                    "name": f"?????? ?{idx + 1} ({photo.get('station_name', '???????')})",
-                    "user": user_ans if user_ans else "?? ??????",
+                    "name": f"Вопрос №{idx + 1} ({photo.get('station_name', 'Станция')})",
+                    "user": user_ans if user_ans else "Не выбран",
                     "correct": correct_ans,
                 })
                 if idx in self.photo_result_labels:
-                    self.photo_result_labels[idx].setText("?")
+                    self.photo_result_labels[idx].setText("✘")
                     self.photo_result_labels[idx].setStyleSheet(f"color: {COLOR_DANGER};")
 
         percent = (correct_count / total * 100) if total > 0 else 0
@@ -438,7 +438,7 @@ class PhotoQuizDialog(QDialog):
             )
 
         dialog = ResultDialog(
-            station_name="????-???????? ???????",
+            station_name="Фото-контроль станций",
             correct=correct_count,
             total=total,
             percent=percent,

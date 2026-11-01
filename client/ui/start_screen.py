@@ -1,334 +1,305 @@
-"""
-?????? ??????-??????? ? ????? (QSS) ??? ????????? skrss (Client ? Host).
-??????-?????????? ????? (Light/Slate) ? ??????-?????????? ????????.
-"""
+import os
+import sys
 
-# ???????? ???????
-COLOR_PRIMARY_DARK = "#1B4332"     # ???????? ???????
-COLOR_PRIMARY = "#2D6A4F"          # ?????????? (??????? ??????)
-COLOR_PRIMARY_HOVER = "#40916C"    # ??????? ??? ?????????
-COLOR_PRIMARY_LIGHT = "#95D5B2"    # ??????? ?????? (??? ?????????)
-COLOR_PRIMARY_PALE = "#D8F3DC"     # ????? ?????? ??????? ???
+from PyQt5.QtWidgets import (
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QPushButton, QSizePolicy, QMessageBox, QFrame, QGraphicsDropShadowEffect
+)
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QPixmap, QColor, QFont, QCursor
 
-# ??????????? ????? (Slate)
-COLOR_BG_MAIN = "#F8FAFC"          # ??????? ???? ???? (?????? ??????-?????)
-COLOR_CARD_BG = "#FFFFFF"          # ??? ???????? ? ???????
-COLOR_CARD_BG_ALT = "#F1F5F9"      # ????????? ??? ????????
-COLOR_BORDER = "#E2E8F0"           # ??????????? ?????? ???????
-COLOR_BORDER_FOCUS = "#2D6A4F"     # ??????? ??? ??????
-COLOR_BORDER_HOVER = "#CBD5E1"     # ??????? ??? ??????
+from logic.data_loader import resource_path
+from logic.network import ServerFinder, ApiClient, try_direct_ip
+from ui.learning_window import LearningWindow
+from ui.quiz_window import QuizWindow
+from ui.student_form import StudentFormDialog
+from ui.waiting_dialog import WaitingDialog
 
-# ???????????
-COLOR_TEXT_PRIMARY = "#0F172A"     # ???????? ????? (Slate 900)
-COLOR_TEXT_SECONDARY = "#475569"   # ????????? ????? / ??????? (Slate 600)
-COLOR_TEXT_MUTED = "#94A3B8"       # ????????? / ?????????? ????? (Slate 400)
-COLOR_TEXT_LIGHT = "#FFFFFF"       # ????? ????? ??? ??????
+from styles import (
+    COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_HOVER, COLOR_PRIMARY_LIGHT,
+    COLOR_PRIMARY_PALE, COLOR_BG_MAIN, COLOR_CARD_BG, COLOR_BORDER,
+    COLOR_BORDER_HOVER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
+    COLOR_TEXT_LIGHT, make_badge_html
+)
 
-# ????????? ?????
-COLOR_SUCCESS = "#16A34A"          # ??????? (????? / ?????????)
-COLOR_SUCCESS_BG = "#DCFCE7"       # ?????? ??? ??????
-COLOR_WARNING = "#D97706"          # ???????? (? ???????? / ????????)
-COLOR_WARNING_BG = "#FEF3C7"       # ?????? ??? ??????????????
-COLOR_DANGER = "#DC2626"           # ??????? (?????? / ???????)
-COLOR_DANGER_BG = "#FEE2E2"        # ?????? ??? ?????????
-COLOR_INFO = "#2563EB"             # ????-?????
-COLOR_INFO_BG = "#DBEAFE"          # ?????? ????? ???
 
-# ????????? ???????
-FONT_FAMILY = "Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
+class ModeCard(QFrame):
+    """Интерактивная карточка выбора режима с ховером и анимацией клика."""
+    clicked = pyqtSignal()
 
-# ?????????? ????? ??????????
-GLOBAL_APP_STYLE = f"""
-QMainWindow, QDialog {{
-    background-color: {COLOR_BG_MAIN};
-    font-family: {FONT_FAMILY};
-    color: {COLOR_TEXT_PRIMARY};
-}}
+    def __init__(self, title, badge_text, description, btn_text, is_primary=True, parent=None):
+        super().__init__(parent)
+        self.setCursor(QCursor(Qt.PointingHandCursor))
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setMinimumHeight(200)
 
-QWidget {{
-    font-family: {FONT_FAMILY};
-    color: {COLOR_TEXT_PRIMARY};
-}}
+        self.normal_style = f"""
+            QFrame {{
+                background-color: {COLOR_CARD_BG};
+                border: 1.5px solid {COLOR_BORDER};
+                border-radius: 12px;
+            }}
+        """
+        self.hover_style = f"""
+            QFrame {{
+                background-color: #FFFFFF;
+                border: 2px solid {COLOR_PRIMARY if is_primary else COLOR_PRIMARY_HOVER};
+                border-radius: 12px;
+            }}
+        """
+        self.setStyleSheet(self.normal_style)
 
-/* ?????????? */
-QScrollBar:vertical {{
-    background: {COLOR_BG_MAIN};
-    width: 10px;
-    margin: 0px;
-    border-radius: 5px;
-}}
-QScrollBar::handle:vertical {{
-    background: #CBD5E1;
-    min-height: 25px;
-    border-radius: 5px;
-    margin: 2px;
-}}
-QScrollBar::handle:vertical:hover {{
-    background: #94A3B8;
-}}
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-    height: 0px;
-}}
-QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
-    background: transparent;
-}}
+        # Тень
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(16)
+        shadow.setColor(QColor(0, 0, 0, 18))
+        shadow.setOffset(0, 4)
+        self.setGraphicsEffect(shadow)
 
-QScrollBar:horizontal {{
-    background: {COLOR_BG_MAIN};
-    height: 10px;
-    margin: 0px;
-    border-radius: 5px;
-}}
-QScrollBar::handle:horizontal {{
-    background: #CBD5E1;
-    min-width: 25px;
-    border-radius: 5px;
-    margin: 2px;
-}}
-QScrollBar::handle:horizontal:hover {{
-    background: #94A3B8;
-}}
-QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
-    width: 0px;
-}}
-QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{
-    background: transparent;
-}}
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(10)
 
-/* ???? ????? */
-QLineEdit, QComboBox {{
-    background-color: {COLOR_CARD_BG};
-    border: 1.5px solid {COLOR_BORDER};
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 14px;
-    color: {COLOR_TEXT_PRIMARY};
-    selection-background-color: {COLOR_PRIMARY_PALE};
-    selection-color: {COLOR_PRIMARY_DARK};
-}}
-QLineEdit:focus, QComboBox:focus {{
-    border: 1.5px solid {COLOR_PRIMARY};
-    background-color: #FFFFFF;
-}}
-QLineEdit:hover, QComboBox:hover {{
-    border-color: {COLOR_BORDER_HOVER};
-}}
+        # Верхняя строка: Заголовок + Бейдж
+        top_row = QHBoxLayout()
+        top_row.setContentsMargins(0, 0, 0, 0)
 
-/* ?????????? ?????? */
-QComboBox::drop-down {{
-    border: none;
-    width: 24px;
-    padding-right: 8px;
-}}
-QComboBox QAbstractItemView {{
-    background-color: {COLOR_CARD_BG};
-    border: 1px solid {COLOR_BORDER};
-    border-radius: 8px;
-    selection-background-color: {COLOR_PRIMARY_PALE};
-    selection-color: {COLOR_PRIMARY_DARK};
-    outline: none;
-    padding: 4px;
-}}
+        lbl_title = QLabel(title)
+        lbl_title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {COLOR_PRIMARY_DARK}; border: none;")
+        top_row.addWidget(lbl_title)
+        top_row.addStretch()
 
-/* ?????? */
-QListWidget {{
-    background-color: {COLOR_CARD_BG};
-    border: 1.5px solid {COLOR_BORDER};
-    border-radius: 10px;
-    outline: none;
-    padding: 6px;
-}}
-QListWidget::item {{
-    padding: 10px 14px;
-    border-radius: 6px;
-    margin-bottom: 2px;
-    border: none;
-    color: {COLOR_TEXT_PRIMARY};
-}}
-QListWidget::item:hover {{
-    background-color: {COLOR_CARD_BG_ALT};
-}}
-QListWidget::item:selected {{
-    background-color: {COLOR_PRIMARY_PALE};
-    color: {COLOR_PRIMARY_DARK};
-    font-weight: 600;
-}}
+        lbl_badge = QLabel()
+        badge_bg = COLOR_PRIMARY_PALE if is_primary else "#FEF3C7"
+        badge_color = COLOR_PRIMARY_DARK if is_primary else "#B45309"
+        lbl_badge.setText(make_badge_html(badge_text, badge_bg, badge_color))
+        lbl_badge.setStyleSheet("border: none;")
+        top_row.addWidget(lbl_badge)
+        layout.addLayout(top_row)
 
-/* ??????? */
-QTableWidget {{
-    background-color: {COLOR_CARD_BG};
-    border: 1.5px solid {COLOR_BORDER};
-    border-radius: 10px;
-    gridline-color: {COLOR_BORDER};
-    outline: none;
-}}
-QTableWidget::item {{
-    padding: 8px 12px;
-    border-bottom: 1px solid {COLOR_BORDER};
-}}
-QTableWidget::item:selected {{
-    background-color: {COLOR_PRIMARY_PALE};
-    color: {COLOR_PRIMARY_DARK};
-}}
-QHeaderView::section {{
-    background-color: {COLOR_CARD_BG_ALT};
-    color: {COLOR_TEXT_SECONDARY};
-    font-weight: 600;
-    font-size: 13px;
-    padding: 10px 12px;
-    border: none;
-    border-bottom: 1.5px solid {COLOR_BORDER};
-}}
+        # Описание режима
+        lbl_desc = QLabel(description)
+        lbl_desc.setWordWrap(True)
+        lbl_desc.setStyleSheet(f"font-size: 13px; color: {COLOR_TEXT_SECONDARY}; line-height: 1.4; border: none;")
+        layout.addWidget(lbl_desc, 1)
 
-/* ??????? (Tabs) */
-QTabWidget::pane {{
-    border: 1.5px solid {COLOR_BORDER};
-    border-radius: 10px;
-    background-color: {COLOR_CARD_BG};
-    top: -1px;
-}}
-QTabBar::tab {{
-    background-color: {COLOR_BG_MAIN};
-    color: {COLOR_TEXT_SECONDARY};
-    padding: 10px 20px;
-    font-weight: 600;
-    font-size: 14px;
-    border: 1px solid {COLOR_BORDER};
-    border-bottom: none;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    margin-right: 4px;
-}}
-QTabBar::tab:selected {{
-    background-color: {COLOR_CARD_BG};
-    color: {COLOR_PRIMARY_DARK};
-    border-top: 3px solid {COLOR_PRIMARY};
-    border-bottom: 1px solid {COLOR_CARD_BG};
-}}
-QTabBar::tab:hover:!selected {{
-    background-color: {COLOR_CARD_BG_ALT};
-    color: {COLOR_TEXT_PRIMARY};
-}}
+        # Кнопка действия внизу карточки
+        self.action_btn = QPushButton(btn_text)
+        self.action_btn.setCursor(QCursor(Qt.PointingHandCursor))
+        btn_bg = COLOR_PRIMARY if is_primary else COLOR_PRIMARY_HOVER
+        self.action_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {btn_bg};
+                color: {COLOR_TEXT_LIGHT};
+                font-size: 14px;
+                font-weight: 600;
+                border-radius: 8px;
+                border: none;
+                padding: 10px 18px;
+            }}
+            QPushButton:hover {{
+                background-color: {COLOR_PRIMARY_HOVER if is_primary else COLOR_PRIMARY_DARK};
+            }}
+        """)
+        self.action_btn.clicked.connect(self.clicked.emit)
+        layout.addWidget(self.action_btn, 0, Qt.AlignRight)
 
-/* ????????-??? */
-QProgressBar {{
-    background-color: {COLOR_BORDER};
-    border-radius: 6px;
-    height: 12px;
-    text-align: center;
-    font-size: 11px;
-    font-weight: bold;
-    color: {COLOR_TEXT_PRIMARY};
-}}
-QProgressBar::chunk {{
-    background-color: {COLOR_PRIMARY};
-    border-radius: 6px;
-}}
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        self.setStyleSheet(self.hover_style)
 
-/* ????????? Tooltips */
-QToolTip {{
-    background-color: {COLOR_TEXT_PRIMARY};
-    color: #FFFFFF;
-    border: none;
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 12px;
-}}
-"""
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self.setStyleSheet(self.normal_style)
 
-# ????? ??????
-BTN_PRIMARY_STYLE = f"""
-QPushButton {{
-    background-color: {COLOR_PRIMARY};
-    color: {COLOR_TEXT_LIGHT};
-    font-size: 15px;
-    font-weight: 600;
-    border-radius: 8px;
-    border: none;
-    padding: 10px 20px;
-}}
-QPushButton:hover {{
-    background-color: {COLOR_PRIMARY_HOVER};
-}}
-QPushButton:pressed {{
-    background-color: {COLOR_PRIMARY_DARK};
-}}
-QPushButton:disabled {{
-    background-color: #CBD5E1;
-    color: #94A3B8;
-}}
-"""
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
 
-BTN_SECONDARY_STYLE = f"""
-QPushButton {{
-    background-color: {COLOR_CARD_BG};
-    color: {COLOR_TEXT_PRIMARY};
-    font-size: 15px;
-    font-weight: 600;
-    border-radius: 8px;
-    border: 1.5px solid {COLOR_BORDER};
-    padding: 10px 20px;
-}}
-QPushButton:hover {{
-    background-color: {COLOR_CARD_BG_ALT};
-    border-color: {COLOR_BORDER_HOVER};
-}}
-QPushButton:pressed {{
-    background-color: {COLOR_BORDER};
-}}
-QPushButton:disabled {{
-    background-color: {COLOR_BG_MAIN};
-    color: #94A3B8;
-    border-color: {COLOR_BORDER};
-}}
-"""
 
-BTN_DANGER_STYLE = f"""
-QPushButton {{
-    background-color: {COLOR_DANGER};
-    color: {COLOR_TEXT_LIGHT};
-    font-size: 14px;
-    font-weight: 600;
-    border-radius: 8px;
-    border: none;
-    padding: 8px 16px;
-}}
-QPushButton:hover {{
-    background-color: #B91C1C;
-}}
-QPushButton:pressed {{
-    background-color: #991B1B;
-}}
-"""
+class StartScreen(QMainWindow):
 
-BTN_SUCCESS_STYLE = f"""
-QPushButton {{
-    background-color: {COLOR_SUCCESS};
-    color: {COLOR_TEXT_LIGHT};
-    font-size: 14px;
-    font-weight: 600;
-    border-radius: 8px;
-    border: none;
-    padding: 8px 16px;
-}}
-QPushButton:hover {{
-    background-color: #15803D;
-}}
-QPushButton:pressed {{
-    background-color: #166534;
-}}
-"""
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Тренажёр: Радиорелейные и спутниковые станции")
+        self.resize(1100, 850)
+        self.setMinimumSize(850, 650)
+        self.setStyleSheet(f"background-color: {COLOR_BG_MAIN};")
 
-def make_badge_html(text: str, bg_color: str, text_color: str, font_size: str = "12px") -> str:
-    """????????? ??????????? ???????? ????/??????."""
-    return f"""
-    <span style="
-        background-color: {bg_color};
-        color: {text_color};
-        font-size: {font_size};
-        font-weight: 600;
-        padding: 3px 8px;
-        border-radius: 12px;
-        display: inline-block;
-    ">{text}</span>
-    """
+        self.learning_window = None
+        self.quiz_window = None
+        self.current_pixmap = None
+
+        self.api_client = None
+        self.fio = ""
+        self.group_name = ""
+
+        central = QWidget()
+        self.setCentralWidget(central)
+        layout = QVBoxLayout(central)
+        layout.setAlignment(Qt.AlignCenter)
+        layout.setContentsMargins(40, 30, 40, 30)
+        layout.setSpacing(18)
+
+        # Верхняя панель заголовков
+        header_widget = QWidget()
+        header_layout = QVBoxLayout(header_widget)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(4)
+        header_layout.setAlignment(Qt.AlignCenter)
+
+        title = QLabel("Тренажёр: Радиорелейные и спутниковые станции")
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet(f"color: {COLOR_PRIMARY_DARK}; font-size: 26px; font-weight: 800;")
+        header_layout.addWidget(title)
+
+        subtitle = QLabel("Учебный комплекс изучения ТТХ и контроля знаний")
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; font-size: 14px; font-weight: 500;")
+        header_layout.addWidget(subtitle)
+        layout.addWidget(header_widget)
+
+        # Контейнер для фото/иллюстрации
+        self.img_container = QFrame()
+        self.img_container.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLOR_CARD_BG};
+                border: 1.5px solid {COLOR_BORDER};
+                border-radius: 12px;
+            }}
+        """)
+        img_layout = QVBoxLayout(self.img_container)
+        img_layout.setContentsMargins(10, 10, 10, 10)
+
+        self.img_label = QLabel()
+        self.img_label.setAlignment(Qt.AlignCenter)
+        self.img_label.setMinimumHeight(240)
+        self.img_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.img_label.setStyleSheet("border: none; background: transparent;")
+
+        bg_path = resource_path("images/start_background.png")
+        pix = QPixmap(bg_path)
+        if not pix.isNull():
+            self.current_pixmap = pix
+        else:
+            self.img_label.setText("📷 Иллюстрация комплекса")
+            self.img_label.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 16px; border: none;")
+
+        img_layout.addWidget(self.img_label)
+        layout.addWidget(self.img_container, 4)
+
+        # Карточки режимов работы (Обучение и Контроль)
+        cards_layout = QHBoxLayout()
+        cards_layout.setSpacing(24)
+
+        card_learn = ModeCard(
+            title="Обучение",
+            badge_text="Самоподготовка",
+            description="Подробный каталог радиорелейных и спутниковых станций. Изучение тактико-технических характеристик, схем размещения и фотоматериалов с встроенным режимом самопроверки.",
+            btn_text="Начать обучение →",
+            is_primary=True,
+            parent=self
+        )
+        card_learn.clicked.connect(self.open_learning)
+        cards_layout.addWidget(card_learn)
+
+        card_quiz = ModeCard(
+            title="Контроль знаний",
+            badge_text="Аттестация",
+            description="Сетевое тестирование под управлением сервера преподавателя. Ответы на вопросы по ТТХ и визуальное распознавание станций с автоматическим формированием оценки.",
+            btn_text="Пройти тестирование →",
+            is_primary=False,
+            parent=self
+        )
+        card_quiz.clicked.connect(self.open_quiz)
+        cards_layout.addWidget(card_quiz)
+
+        layout.addLayout(cards_layout, 2)
+
+    def update_image(self):
+        if not self.current_pixmap:
+            return
+        w = max(260, self.img_label.width() - 16)
+        h = max(180, self.img_label.height() - 16)
+        self.img_label.setPixmap(
+            self.current_pixmap.scaled(w, h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        )
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.update_image()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.update_image()
+        self.api_client = None
+        self.fio = ""
+        self.group_name = ""
+
+    def open_learning(self):
+        self.learning_window = LearningWindow(back_callback=self.show)
+        self.learning_window.show()
+        self.hide()
+
+    def open_quiz(self):
+        dialog = StudentFormDialog(self)
+        if dialog.exec_() != StudentFormDialog.Accepted:
+            return
+
+        self.fio = dialog.fio
+        self.group_name = dialog.group
+        manual_ip = dialog.manual_ip
+
+        ip = None
+        port = None
+
+        if manual_ip:
+            result = try_direct_ip(manual_ip)
+            if result:
+                ip, port = result
+            else:
+                QMessageBox.warning(
+                    self, "Сервер недоступен",
+                    f"По адресу «{manual_ip}» сервер не отвечает.\n\n"
+                    "Проверьте IP-адрес и убедитесь, что сервер запущен."
+                )
+                return
+        else:
+            finder = ServerFinder()
+            if finder.find():
+                ip = finder.found_ip
+                port = finder.found_port
+
+        if not ip:
+            QMessageBox.warning(
+                self, "Сервер не найден",
+                "Не удалось найти сервер автоматически.\n\n"
+                "Попросите преподавателя назвать IP-адрес\n"
+                "и введите его вручную в форме авторизации."
+            )
+            return
+
+        self.api_client = ApiClient(ip, port)
+
+        if not self.api_client.ping():
+            QMessageBox.warning(
+                self, "Сервер недоступен",
+                f"Сервер найден по адресу {ip}:{port}, но не отвечает."
+            )
+            return
+
+        waiting = WaitingDialog(self.api_client, self.fio, self.group_name, self)
+        result = waiting.exec_()
+
+        if result != WaitingDialog.Accepted or not waiting.result:
+            return
+
+        self.quiz_window = QuizWindow(
+            back_callback=self.show,
+            api_client=self.api_client,
+            fio=self.fio,
+            group_name=self.group_name,
+        )
+        self.quiz_window.show()
+        self.hide()

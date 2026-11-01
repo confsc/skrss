@@ -1,5 +1,5 @@
 """
-?????? ???????????? ?? ??????????????? (???).
+Диалог тестирования по характеристикам (ТТХ).
 """
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
@@ -60,15 +60,15 @@ class QuizDialog(QDialog):
         if is_server_mode:
             self.station = {"id": station_id, "name": station_name, "specs": specs}
             self.specs = specs
-            self.setWindowTitle(f"????????: {station_name}")
+            self.setWindowTitle(f"Контроль: {station_name}")
         else:
             self.station = station
             if is_control:
                 self.specs = get_quiz_specs(station)
-                self.setWindowTitle(f"????????: {station['name']}")
+                self.setWindowTitle(f"Контроль: {station['name']}")
             else:
                 self.specs = get_key_specs(station)
-                self.setWindowTitle(f"??????? ????????: {station['name']}")
+                self.setWindowTitle(f"Входной контроль: {station['name']}")
 
         self.inputs = {}
         self.unit_inputs = {}
@@ -87,7 +87,7 @@ class QuizDialog(QDialog):
         main_layout.setContentsMargins(28, 22, 28, 22)
         main_layout.setSpacing(14)
 
-        # ??????? ?????????????? ?????? (?????????, ???? ? ??????)
+        # Верхняя информационная панель (Заголовок, инфо и таймер)
         header_card = QFrame()
         header_card.setStyleSheet(f"""
             QFrame {{
@@ -103,13 +103,13 @@ class QuizDialog(QDialog):
         title_col = QVBoxLayout()
         title_col.setSpacing(2)
 
-        mode_badge = "??????? ????????" if is_server_mode else ("???????? ??????" if is_control else "????????????")
+        mode_badge = "Сетевой контроль" if is_server_mode else ("Контроль знаний" if is_control else "Самопроверка")
         badge_lbl = QLabel(make_badge_html(mode_badge, COLOR_PRIMARY_PALE, COLOR_PRIMARY_DARK))
         badge_lbl.setStyleSheet("border: none;")
         title_col.addWidget(badge_lbl)
 
-        st_title = self.station.get("name", "????")
-        title = QLabel(f"???????: {st_title}")
+        st_title = self.station.get("name", "Тест")
+        title = QLabel(f"Станция: {st_title}")
         title.setStyleSheet(f"color: {COLOR_PRIMARY_DARK}; font-size: 20px; font-weight: 700; border: none;")
         title_col.addWidget(title)
 
@@ -117,7 +117,7 @@ class QuizDialog(QDialog):
         h_layout.addStretch()
 
         if is_server_mode and self.time_limit > 0:
-            self.timer_label = QLabel(f"? {self._fmt_time(self.time_limit)}")
+            self.timer_label = QLabel(f"⏱ {self._fmt_time(self.time_limit)}")
             self.timer_label.setStyleSheet(f"""
                 color: #FFFFFF;
                 background-color: {COLOR_PRIMARY};
@@ -131,17 +131,17 @@ class QuizDialog(QDialog):
 
         main_layout.addWidget(header_card)
 
-        # ?????????
+        # Подсказка
         hint_text = (
-            "????????? ????????? ???????. ??? ??????? ??????? ???????? ???????? ? ???????? ??????? ?????????."
+            "Заполните параметры станции. Для величин укажите числовое значение и выберите единицу измерения."
             if is_server_mode or is_control else
-            "?????????????? ????????? ?????? ???????? ???????-??????????? ????????????? (???)."
+            "Самостоятельно проверьте знание основных тактико-технических характеристик (ТТХ)."
         )
-        hint = QLabel(f"?? {hint_text}")
+        hint = QLabel(f"💡 {hint_text}")
         hint.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; font-size: 13px; padding-left: 4px;")
         main_layout.addWidget(hint)
 
-        # ??????? ????????? ? ?????????? ????????
+        # Область прокрутки с карточками вопросов
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -169,24 +169,24 @@ class QuizDialog(QDialog):
             border-radius: 6px;
         """
 
-        header_name = QLabel("?????????????? / ??????")
+        header_name = QLabel("Характеристика / Вопрос")
         header_name.setStyleSheet(HEADER_STYLE)
         header_name.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         header_name.setMinimumWidth(LABEL_MIN)
         grid.addWidget(header_name, 0, 0)
 
-        header_val = QLabel("???????? ??????")
+        header_val = QLabel("Значение ответа")
         header_val.setStyleSheet(HEADER_STYLE)
         header_val.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         grid.addWidget(header_val, 0, 1)
 
-        header_unit = QLabel("??????? ?????????")
+        header_unit = QLabel("Единица измерения")
         header_unit.setStyleSheet(HEADER_STYLE)
         header_unit.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         header_unit.setMinimumWidth(UNIT_MIN)
         grid.addWidget(header_unit, 0, 2)
 
-        header_res = QLabel("??????")
+        header_res = QLabel("Статус")
         header_res.setStyleSheet(HEADER_STYLE)
         header_res.setAlignment(Qt.AlignCenter)
         header_res.setMinimumWidth(RESULT_MIN)
@@ -211,14 +211,14 @@ class QuizDialog(QDialog):
                 self.inputs[spec["name"]] = widget
                 grid.addWidget(widget, row_idx, 1)
 
-                empty_unit = QLabel("-")
+                empty_unit = QLabel("—")
                 empty_unit.setAlignment(Qt.AlignCenter)
                 empty_unit.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
                 empty_unit.setMinimumWidth(UNIT_MIN)
                 grid.addWidget(empty_unit, row_idx, 2)
             else:
                 widget = QLineEdit()
-                widget.setPlaceholderText("??????? ?????...")
+                widget.setPlaceholderText("Введите ответ...")
                 widget.setMinimumHeight(38)
                 self.inputs[spec["name"]] = widget
                 grid.addWidget(widget, row_idx, 1)
@@ -236,19 +236,19 @@ class QuizDialog(QDialog):
                         self.unit_inputs[spec["name"]] = unit_widget
                         grid.addWidget(unit_widget, row_idx, 2)
                     else:
-                        empty_unit = QLabel("-")
+                        empty_unit = QLabel("—")
                         empty_unit.setAlignment(Qt.AlignCenter)
                         empty_unit.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
                         empty_unit.setMinimumWidth(UNIT_MIN)
                         grid.addWidget(empty_unit, row_idx, 2)
                 else:
-                    empty_unit = QLabel("-")
+                    empty_unit = QLabel("—")
                     empty_unit.setAlignment(Qt.AlignCenter)
                     empty_unit.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
                     empty_unit.setMinimumWidth(UNIT_MIN)
                     grid.addWidget(empty_unit, row_idx, 2)
 
-            result_lbl = QLabel(".")
+            result_lbl = QLabel("•")
             result_lbl.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 16px;")
             result_lbl.setMinimumWidth(RESULT_MIN)
             result_lbl.setAlignment(Qt.AlignCenter)
@@ -266,11 +266,11 @@ class QuizDialog(QDialog):
 
         main_layout.addWidget(scroll)
 
-        # ?????? ?????? ??????????
+        # Нижние кнопки управления
         btns = QHBoxLayout()
         btns.setSpacing(12)
 
-        cancel_btn = QPushButton("???????? ? ?????")
+        cancel_btn = QPushButton("Прервать и выйти")
         cancel_btn.setCursor(QCursor(Qt.PointingHandCursor))
         cancel_btn.setMinimumHeight(44)
         cancel_btn.setMinimumWidth(150)
@@ -280,7 +280,7 @@ class QuizDialog(QDialog):
 
         btns.addStretch()
 
-        self.check_btn = QPushButton("????????? ? ????????? ?")
+        self.check_btn = QPushButton("Завершить и проверить →")
         self.check_btn.setCursor(QCursor(Qt.PointingHandCursor))
         self.check_btn.setMinimumHeight(44)
         self.check_btn.setMinimumWidth(220)
@@ -290,7 +290,7 @@ class QuizDialog(QDialog):
 
         main_layout.addLayout(btns)
 
-        # ???????
+        # Таймеры
         if is_server_mode and self.time_limit > 0:
             self.timer = QTimer()
             self.timer.timeout.connect(self.tick)
@@ -369,8 +369,8 @@ class QuizDialog(QDialog):
                 self.finished = True
                 QMessageBox.warning(
                     self,
-                    "?????? ??????????",
-                    "????? ? ???????? ????????????? ????????.\n\n???????????? ????????."
+                    "Сервер недоступен",
+                    "Связь с сервером преподавателя потеряна.\n\nТестирование прервано."
                 )
                 self.reject()
 
@@ -391,8 +391,8 @@ class QuizDialog(QDialog):
             self.finished = True
             QMessageBox.warning(
                 self,
-                "???????? ??????????",
-                "???????? ??? ???????? ??????????????.\n\n???????????? ???????????."
+                "Контроль остановлен",
+                "Контроль был завершён преподавателем.\n\nТестирование закрывается."
             )
             self.reject()
 
@@ -414,7 +414,7 @@ class QuizDialog(QDialog):
 
     def tick(self):
         self.remaining -= 1
-        self.timer_label.setText(f"? {self._fmt_time(max(0, self.remaining))}")
+        self.timer_label.setText(f"⏱ {self._fmt_time(max(0, self.remaining))}")
 
         if self.remaining <= 60 and self.remaining > 10:
             self.timer_label.setStyleSheet(f"""
@@ -443,7 +443,7 @@ class QuizDialog(QDialog):
         if self.finished:
             return
         self.finished = True
-        QMessageBox.warning(self, "????? ?????", "????? ???????????? ???????. ?????? ???????????? ?? ????????.")
+        QMessageBox.warning(self, "Время вышло", "Время тестирования истекло. Ответы отправляются на проверку.")
         self.check(auto=True)
 
     def check(self, auto=False):
@@ -475,23 +475,23 @@ class QuizDialog(QDialog):
             if check_answer(spec, user_answer, user_unit):
                 total_score += weight
                 correct_count += 1
-                self.result_labels[spec["name"]].setText("?")
+                self.result_labels[spec["name"]].setText("✔")
                 self.result_labels[spec["name"]].setStyleSheet(f"color: {COLOR_SUCCESS}; font-size: 20px; font-weight: bold;")
             else:
                 unit = spec.get("unit", "").strip()
                 if unit and user_unit:
-                    user_full = f"{user_answer} {user_unit}" if user_answer else "-"
+                    user_full = f"{user_answer} {user_unit}" if user_answer else "—"
                 elif unit:
-                    user_full = f"{user_answer} (??????? ?? ???????)" if user_answer else "-"
+                    user_full = f"{user_answer} (единица не выбрана)" if user_answer else "—"
                 else:
-                    user_full = user_answer if user_answer else "-"
+                    user_full = user_answer if user_answer else "—"
                 correct_full = f"{spec['answer']} {unit}".strip()
                 errors.append({
                     "name": spec["name"],
                     "user": user_full,
                     "correct": correct_full,
                 })
-                self.result_labels[spec["name"]].setText("?")
+                self.result_labels[spec["name"]].setText("✘")
                 self.result_labels[spec["name"]].setStyleSheet(f"color: {COLOR_DANGER}; font-size: 20px; font-weight: bold;")
 
         percent = (total_score / max_score * 100) if max_score > 0 else 0
