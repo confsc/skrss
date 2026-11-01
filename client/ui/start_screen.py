@@ -19,7 +19,7 @@ from styles import (
     COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_HOVER, COLOR_PRIMARY_LIGHT,
     COLOR_PRIMARY_PALE, COLOR_BG_MAIN, COLOR_CARD_BG, COLOR_BORDER,
     COLOR_BORDER_HOVER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
-    COLOR_TEXT_LIGHT, make_badge_html
+    COLOR_TEXT_LIGHT
 )
 
 
@@ -27,11 +27,11 @@ class ModeCard(QFrame):
     """Интерактивная карточка выбора режима с ховером и анимацией клика."""
     clicked = pyqtSignal()
 
-    def __init__(self, title, badge_text, description, btn_text, is_primary=True, parent=None):
+    def __init__(self, title, btn_text, is_primary=True, parent=None):
         super().__init__(parent)
         self.setCursor(QCursor(Qt.PointingHandCursor))
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setMinimumHeight(200)
+        self.setMinimumHeight(130)
 
         self.normal_style = f"""
             QFrame {{
@@ -58,30 +58,12 @@ class ModeCard(QFrame):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 20, 24, 20)
-        layout.setSpacing(10)
-
-        # Верхняя строка: Заголовок + Бейдж
-        top_row = QHBoxLayout()
-        top_row.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(16)
 
         lbl_title = QLabel(title)
-        lbl_title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {COLOR_PRIMARY_DARK}; border: none;")
-        top_row.addWidget(lbl_title)
-        top_row.addStretch()
-
-        lbl_badge = QLabel()
-        badge_bg = COLOR_PRIMARY_PALE if is_primary else "#FEF3C7"
-        badge_color = COLOR_PRIMARY_DARK if is_primary else "#B45309"
-        lbl_badge.setText(make_badge_html(badge_text, badge_bg, badge_color))
-        lbl_badge.setStyleSheet("border: none;")
-        top_row.addWidget(lbl_badge)
-        layout.addLayout(top_row)
-
-        # Описание режима
-        lbl_desc = QLabel(description)
-        lbl_desc.setWordWrap(True)
-        lbl_desc.setStyleSheet(f"font-size: 13px; color: {COLOR_TEXT_SECONDARY}; line-height: 1.4; border: none;")
-        layout.addWidget(lbl_desc, 1)
+        lbl_title.setStyleSheet(f"font-size: 22px; font-weight: bold; color: {COLOR_PRIMARY_DARK}; border: none;")
+        layout.addWidget(lbl_title)
+        layout.addStretch()
 
         # Кнопка действия внизу карточки
         self.action_btn = QPushButton(btn_text)
@@ -95,7 +77,7 @@ class ModeCard(QFrame):
                 font-weight: 600;
                 border-radius: 8px;
                 border: none;
-                padding: 10px 18px;
+                padding: 10px 20px;
             }}
             QPushButton:hover {{
                 background-color: {COLOR_PRIMARY_HOVER if is_primary else COLOR_PRIMARY_DARK};
@@ -195,8 +177,6 @@ class StartScreen(QMainWindow):
 
         card_learn = ModeCard(
             title="Обучение",
-            badge_text="Самоподготовка",
-            description="Подробный каталог радиорелейных и спутниковых станций. Изучение тактико-технических характеристик, схем размещения и фотоматериалов с встроенным режимом самопроверки.",
             btn_text="Начать обучение →",
             is_primary=True,
             parent=self
@@ -206,8 +186,6 @@ class StartScreen(QMainWindow):
 
         card_quiz = ModeCard(
             title="Контроль знаний",
-            badge_text="Аттестация",
-            description="Сетевое тестирование под управлением сервера преподавателя. Ответы на вопросы по ТТХ и визуальное распознавание станций с автоматическим формированием оценки.",
             btn_text="Пройти тестирование →",
             is_primary=False,
             parent=self

@@ -188,9 +188,14 @@ class QuizWindow(QMainWindow):
         dialog.exec_()
 
     def go_back(self):
+        self.close()
+
+    def closeEvent(self, event):
         try:
             self.api_client.disconnect(self.fio, self.group_name)
         except Exception:
             pass
-        self.back_callback()
-        self.close()
+        if self.back_callback:
+            self.back_callback()
+            self.back_callback = None
+        super().closeEvent(event)

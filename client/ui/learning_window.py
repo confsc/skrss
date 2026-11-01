@@ -134,8 +134,6 @@ class StationListWidget(QWidget):
         self.list_widget.currentRowChanged.connect(self.on_station_selected)
         left_layout.addWidget(self.list_widget)
 
-        self.refresh_list()
-
         # Правая панель: Детальная карточка станции
         right = QWidget()
         right_layout = QVBoxLayout(right)
@@ -228,6 +226,8 @@ class StationListWidget(QWidget):
 
         layout.addWidget(splitter)
 
+        self.refresh_list()
+
     def on_search_changed(self, text):
         query = text.strip().lower()
         if not query:
@@ -261,6 +261,8 @@ class StationListWidget(QWidget):
             self.list_widget.setCurrentRow(0)
 
     def on_station_selected(self, row):
+        if not hasattr(self, "title_label") or not hasattr(self, "info_text") or not hasattr(self, "station_status_badge"):
+            return
         if row < 0 or row >= len(self.filtered_stations):
             return
         station = self.filtered_stations[row]
@@ -404,5 +406,10 @@ class LearningWindow(QMainWindow):
         layout.addWidget(self.tabs)
 
     def go_back(self):
-        self.back_callback()
         self.close()
+
+    def closeEvent(self, event):
+        if self.back_callback:
+            self.back_callback()
+            self.back_callback = None
+        super().closeEvent(event)
