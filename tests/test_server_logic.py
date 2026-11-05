@@ -24,6 +24,12 @@ def test_database_initialization_and_tables():
     assert "attempts" in tables
     assert "connected_students" in tables
 
+    cur.execute("SELECT name FROM sqlite_master WHERE type='index'")
+    indexes = {row[0] for row in cur.fetchall()}
+    assert "idx_students_quiz" in indexes
+    assert "idx_connected_heartbeat" in indexes
+    assert "idx_attempts_fio" in indexes
+
 
 def test_database_student_connection_and_heartbeat():
     db = Database(":memory:")

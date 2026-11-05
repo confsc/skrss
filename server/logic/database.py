@@ -39,6 +39,11 @@ class Database:
         self.db_path = db_path or DB_PATH
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
+        try:
+            self.conn.execute("PRAGMA journal_mode = WAL")
+            self.conn.execute("PRAGMA synchronous = NORMAL")
+        except Exception:
+            pass
         self._create_tables()
         self._migrate()
 
@@ -107,6 +112,10 @@ class Database:
                 last_heartbeat REAL DEFAULT 0
             )
         """)
+
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_students_quiz ON students(quiz_id, status)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_connected_heartbeat ON connected_students(last_heartbeat)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_attempts_fio ON attempts(fio, group_name)")
 
         self.conn.commit()
 
@@ -332,7 +341,7 @@ class Database:
         cur.execute("""
             INSERT INTO attempts
             (fio, group_name, station_id, station_name, score, percent,
-             correct_count, question_count, grade, duration, finished_at)
+              correct_count, question_count, grade, duration, finished_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             fio, group_name, station_id, station_name,

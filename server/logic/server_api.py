@@ -148,6 +148,8 @@ def _make_photo_questions(stations, count, category=None):
 
 
 def create_app():
+    import logging
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
     app = Flask(__name__)
     db = Database()
 
