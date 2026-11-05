@@ -97,3 +97,10 @@ def test_station_search_filter(qapp):
     # Clear search
     radio_widget.search_input.setText("")
     assert radio_widget.list_widget.count() == initial_count
+
+
+def test_tab_bar_styling_and_no_elision(qapp):
+    from styles import GLOBAL_APP_STYLE
+    assert "min-width: 180px;" in GLOBAL_APP_STYLE
+    assert "padding: 10px 24px;" in GLOBAL_APP_STYLE
+    assert "QTabBar::tab" in GLOBAL_APP_STYLE
