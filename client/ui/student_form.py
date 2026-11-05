@@ -1,9 +1,7 @@
 """
 Диалог ввода ФИО, группы и IP сервера.
-С сохранением последних значений.
+Каждый запуск открывает чистые поля ввода для новой идентификации обучающегося.
 """
-import os
-import json
 
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
@@ -20,40 +18,6 @@ from styles import (
 )
 
 
-def _config_dir():
-    base = os.environ.get("APPDATA") or os.path.expanduser("~")
-    path = os.path.join(base, "RRSTrainer")
-    try:
-        os.makedirs(path, exist_ok=True)
-    except Exception:
-        pass
-    return path
-
-
-def _settings_path():
-    return os.path.join(_config_dir(), "settings.json")
-
-
-def load_settings():
-    path = _settings_path()
-    if not os.path.exists(path):
-        return {}
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-
-def save_settings(data):
-    path = _settings_path()
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
-
-
 class StudentFormDialog(QDialog):
 
     def __init__(self, parent=None):
@@ -65,11 +29,6 @@ class StudentFormDialog(QDialog):
         self.fio = ""
         self.group = ""
         self.manual_ip = ""
-
-        settings = load_settings()
-        last_ip = settings.get("last_ip", "")
-        last_fio = settings.get("last_fio", "")
-        last_group = settings.get("last_group", "")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(32, 28, 32, 28)
@@ -115,7 +74,6 @@ class StudentFormDialog(QDialog):
 
         self.fio_input = QLineEdit()
         self.fio_input.setPlaceholderText("Иванов Иван Иванович")
-        self.fio_input.setText(last_fio)
         self.fio_input.setMinimumHeight(42)
         card_layout.addWidget(self.fio_input)
 
@@ -126,7 +84,6 @@ class StudentFormDialog(QDialog):
 
         self.group_input = QLineEdit()
         self.group_input.setPlaceholderText("Например: 21-Б или 302")
-        self.group_input.setText(last_group)
         self.group_input.setMinimumHeight(42)
         card_layout.addWidget(self.group_input)
 
@@ -147,7 +104,6 @@ class StudentFormDialog(QDialog):
 
         self.ip_input = QLineEdit()
         self.ip_input.setPlaceholderText("Например: 192.168.1.50")
-        self.ip_input.setText(last_ip)
         self.ip_input.setMinimumHeight(40)
         card_layout.addWidget(self.ip_input)
 
@@ -177,6 +133,13 @@ class StudentFormDialog(QDialog):
         self.group_input.returnPressed.connect(self.ip_input.setFocus)
         self.ip_input.returnPressed.connect(self.on_ok)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.fio_input.clear()
+        self.group_input.clear()
+        self.ip_input.clear()
+        self.fio_input.setFocus()
+
     def on_ok(self):
         fio = self.fio_input.text().strip()
         group = self.group_input.text().strip()
@@ -194,11 +157,5 @@ class StudentFormDialog(QDialog):
         self.fio = fio
         self.group = group
         self.manual_ip = ip
-
-        save_settings({
-            "last_ip": ip,
-            "last_fio": fio,
-            "last_group": group,
-        })
 
         self.accept()

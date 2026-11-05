@@ -101,6 +101,14 @@ def test_station_search_filter(qapp):
 
 def test_tab_bar_styling_and_no_elision(qapp):
     from styles import GLOBAL_APP_STYLE
-    assert "min-width: 180px;" in GLOBAL_APP_STYLE
-    assert "padding: 10px 24px;" in GLOBAL_APP_STYLE
+    assert "min-width: 260px;" in GLOBAL_APP_STYLE
+    assert "padding: 10px 28px;" in GLOBAL_APP_STYLE
     assert "QTabBar::tab" in GLOBAL_APP_STYLE
+
+
+def test_student_form_starts_with_empty_fields(qapp):
+    from ui.student_form import StudentFormDialog
+    dialog = StudentFormDialog()
+    assert dialog.fio_input.text() == ""
+    assert dialog.group_input.text() == ""
+    assert dialog.ip_input.text() == ""

@@ -190,15 +190,15 @@ QTabWidget::pane {{
 QTabBar::tab {{
     background-color: {COLOR_BG_MAIN};
     color: {COLOR_TEXT_SECONDARY};
-    padding: 10px 24px;
-    min-width: 180px;
+    padding: 10px 28px;
+    min-width: 260px;
     font-weight: 600;
     font-size: 14px;
     border: 1px solid {COLOR_BORDER};
     border-bottom: none;
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
-    margin-right: 4px;
+    margin-right: 6px;
 }}
 QTabBar::tab:selected {{
     background-color: {COLOR_CARD_BG};
