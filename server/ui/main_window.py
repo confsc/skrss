@@ -45,10 +45,10 @@ from database import Database  # noqa: E402
 from broadcast import Broadcaster  # noqa: E402
 
 from styles import (
-    COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_HOVER, COLOR_PRIMARY_LIGHT,
+    COLOR_PRIMARY, COLOR_PRIMARY_DARK,
     COLOR_PRIMARY_PALE, COLOR_BG_MAIN, COLOR_CARD_BG, COLOR_BORDER,
-    COLOR_BORDER_HOVER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
-    COLOR_TEXT_LIGHT, COLOR_SUCCESS, COLOR_SUCCESS_BG, COLOR_WARNING, COLOR_WARNING_BG,
+    COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
+    COLOR_SUCCESS, COLOR_SUCCESS_BG, COLOR_WARNING, COLOR_WARNING_BG,
     COLOR_DANGER, COLOR_DANGER_BG, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE,
     BTN_DANGER_STYLE, make_badge_html
 )
@@ -75,10 +75,17 @@ STATUS_BGS = {
 }
 
 
+_stations_cache = None
+
+
 def _load_stations():
+    global _stations_cache
+    if _stations_cache is not None:
+        return _stations_cache
     path = os.path.join(DATA_PATH, "stations.json")
     with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        _stations_cache = json.load(f)
+    return _stations_cache
 
 
 def _calculate_question_count(total):

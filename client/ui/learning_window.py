@@ -5,20 +5,19 @@ from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QListWidget,
     QListWidgetItem, QLabel, QTextEdit, QPushButton, QTabWidget,
     QSplitter, QMessageBox, QSizePolicy, QLineEdit, QDialog,
-    QFrame, QGraphicsDropShadowEffect
+    QFrame
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QColor, QCursor
 
 from logic.data_loader import load_stations, resource_path
 from logic.specs_formatter import build_specs_html
-from ui.quiz_dialog import QuizDialog
 
 from styles import (
-    COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_HOVER, COLOR_PRIMARY_LIGHT,
+    COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_HOVER,
     COLOR_PRIMARY_PALE, COLOR_BG_MAIN, COLOR_CARD_BG, COLOR_BORDER,
-    COLOR_BORDER_HOVER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
-    COLOR_TEXT_LIGHT, COLOR_SUCCESS, COLOR_SUCCESS_BG, BTN_PRIMARY_STYLE,
+    COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
+    COLOR_SUCCESS, COLOR_SUCCESS_BG, BTN_PRIMARY_STYLE,
     BTN_SECONDARY_STYLE, make_badge_html
 )
 
@@ -329,6 +328,7 @@ class StationListWidget(QWidget):
         self.update_image()
 
     def start_quiz(self):
+        from ui.quiz_dialog import QuizDialog
         dialog = QuizDialog(
             station=self.current_station,
             parent=self,
@@ -401,8 +401,10 @@ class LearningWindow(QMainWindow):
 
         # Вкладки категорий
         self.tabs = QTabWidget()
-        self.tabs.addTab(StationListWidget("radio", self), "📻 Радиорелейные станции")
-        self.tabs.addTab(StationListWidget("satellite", self), "🛰 Спутниковые станции")
+        self.tabs.tabBar().setElideMode(Qt.ElideNone)
+        self.tabs.tabBar().setExpanding(True)
+        self.tabs.addTab(StationListWidget("radio", self), "Радиорелейные станции")
+        self.tabs.addTab(StationListWidget("satellite", self), "Спутниковые станции")
         layout.addWidget(self.tabs)
 
     def go_back(self):
