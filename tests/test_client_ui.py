@@ -13,6 +13,7 @@ for p in [CLIENT_DIR, os.path.join(CLIENT_DIR, "ui"), os.path.join(CLIENT_DIR, "
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import Qt
 from ui.start_screen import StartScreen, ModeCard
 from ui.learning_window import LearningWindow, StationListWidget
 
@@ -48,6 +49,9 @@ def test_learning_window_opens_without_crash(qapp):
     win = LearningWindow(back_callback=on_back)
     assert win is not None
     assert win.tabs.count() == 2
+    assert win.tabs.tabBar().elideMode() == Qt.ElideNone
+    assert win.tabs.tabText(0) == "Радиорелейные станции"
+    assert win.tabs.tabText(1) == "Спутниковые станции"
 
     # Check radio tab widget
     radio_widget = win.tabs.widget(0)

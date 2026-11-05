@@ -19,6 +19,9 @@ def test_stations_load_successfully():
     stations = load_stations()
     assert isinstance(stations, list)
     assert len(stations) > 0
+    # Test caching: subsequent call returns identical in-memory instance
+    stations_cached = load_stations()
+    assert stations is stations_cached
     print(f"Loaded {len(stations)} stations.")
 
 

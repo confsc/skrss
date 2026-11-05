@@ -13,10 +13,10 @@ from logic.scoring import check_answer, get_key_specs, get_quiz_specs, get_unit_
 from ui.result_dialog import ResultDialog
 
 from styles import (
-    COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_HOVER, COLOR_PRIMARY_LIGHT,
+    COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_HOVER,
     COLOR_PRIMARY_PALE, COLOR_BG_MAIN, COLOR_CARD_BG, COLOR_BORDER,
-    COLOR_BORDER_HOVER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
-    COLOR_TEXT_LIGHT, COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER,
+    COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
+    COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER,
     BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, make_badge_html
 )
 
@@ -211,11 +211,7 @@ class QuizDialog(QDialog):
                 self.inputs[spec["name"]] = widget
                 grid.addWidget(widget, row_idx, 1)
 
-                empty_unit = QLabel("—")
-                empty_unit.setAlignment(Qt.AlignCenter)
-                empty_unit.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
-                empty_unit.setMinimumWidth(UNIT_MIN)
-                grid.addWidget(empty_unit, row_idx, 2)
+                grid.addWidget(self._make_empty_unit(UNIT_MIN), row_idx, 2)
             else:
                 widget = QLineEdit()
                 widget.setPlaceholderText("Введите ответ...")
@@ -223,7 +219,7 @@ class QuizDialog(QDialog):
                 self.inputs[spec["name"]] = widget
                 grid.addWidget(widget, row_idx, 1)
 
-                unit_text = spec.get("unit", "").strip()
+                unit_text = (spec.get("unit") or "").strip()
                 if unit_text:
                     unit_options = get_unit_options(unit_text)
                     if unit_options:
@@ -236,17 +232,9 @@ class QuizDialog(QDialog):
                         self.unit_inputs[spec["name"]] = unit_widget
                         grid.addWidget(unit_widget, row_idx, 2)
                     else:
-                        empty_unit = QLabel("—")
-                        empty_unit.setAlignment(Qt.AlignCenter)
-                        empty_unit.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
-                        empty_unit.setMinimumWidth(UNIT_MIN)
-                        grid.addWidget(empty_unit, row_idx, 2)
+                        grid.addWidget(self._make_empty_unit(UNIT_MIN), row_idx, 2)
                 else:
-                    empty_unit = QLabel("—")
-                    empty_unit.setAlignment(Qt.AlignCenter)
-                    empty_unit.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
-                    empty_unit.setMinimumWidth(UNIT_MIN)
-                    grid.addWidget(empty_unit, row_idx, 2)
+                    grid.addWidget(self._make_empty_unit(UNIT_MIN), row_idx, 2)
 
             result_lbl = QLabel("•")
             result_lbl.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-size: 16px;")
@@ -321,6 +309,15 @@ class QuizDialog(QDialog):
             return
         super().keyPressEvent(event)
 
+    @staticmethod
+    def _make_empty_unit(min_width):
+        """Создаёт placeholder QLabel '—' для пустой колонки единиц измерения."""
+        lbl = QLabel("—")
+        lbl.setAlignment(Qt.AlignCenter)
+        lbl.setStyleSheet(f"color: {COLOR_TEXT_MUTED};")
+        lbl.setMinimumWidth(min_width)
+        return lbl
+
     def autofill_correct_answers(self):
         for spec in self.specs:
             widget = self.inputs[spec["name"]]
@@ -340,7 +337,7 @@ class QuizDialog(QDialog):
 
                 if spec["name"] in self.unit_inputs:
                     unit_widget = self.unit_inputs[spec["name"]]
-                    correct_unit = spec.get("unit", "").strip()
+                    correct_unit = (spec.get("unit") or "").strip()
                     idx = unit_widget.findText(correct_unit)
                     if idx >= 0:
                         unit_widget.setCurrentIndex(idx)
@@ -478,7 +475,7 @@ class QuizDialog(QDialog):
                 self.result_labels[spec["name"]].setText("✔")
                 self.result_labels[spec["name"]].setStyleSheet(f"color: {COLOR_SUCCESS}; font-size: 20px; font-weight: bold;")
             else:
-                unit = spec.get("unit", "").strip()
+                unit = (spec.get("unit") or "").strip()
                 if unit and user_unit:
                     user_full = f"{user_answer} {user_unit}" if user_answer else "—"
                 elif unit:
