@@ -1,24 +1,16 @@
-import os
-import sys
-
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QSizePolicy, QMessageBox, QFrame, QGraphicsDropShadowEffect
 )
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QPixmap, QColor, QFont, QCursor
+from PyQt5.QtGui import QPixmap, QColor, QCursor
 
 from logic.data_loader import resource_path
-from logic.network import ServerFinder, ApiClient, try_direct_ip
-from ui.learning_window import LearningWindow
-from ui.quiz_window import QuizWindow
-from ui.student_form import StudentFormDialog
-from ui.waiting_dialog import WaitingDialog
 
 from styles import (
-    COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_HOVER, COLOR_PRIMARY_LIGHT,
-    COLOR_PRIMARY_PALE, COLOR_BG_MAIN, COLOR_CARD_BG, COLOR_BORDER,
-    COLOR_BORDER_HOVER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
+    COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_HOVER,
+    COLOR_BG_MAIN, COLOR_CARD_BG, COLOR_BORDER,
+    COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
     COLOR_TEXT_LIGHT
 )
 
@@ -216,11 +208,17 @@ class StartScreen(QMainWindow):
         self.group_name = ""
 
     def open_learning(self):
+        from ui.learning_window import LearningWindow
         self.learning_window = LearningWindow(back_callback=self.show)
         self.learning_window.show()
         self.hide()
 
     def open_quiz(self):
+        from ui.student_form import StudentFormDialog
+        from logic.network import ServerFinder, ApiClient, try_direct_ip
+        from ui.waiting_dialog import WaitingDialog
+        from ui.quiz_window import QuizWindow
+
         dialog = StudentFormDialog(self)
         if dialog.exec_() != StudentFormDialog.Accepted:
             return

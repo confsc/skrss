@@ -43,10 +43,17 @@ from config import (  # noqa: E402
 from database import Database  # noqa: E402
 
 
+_stations_cache = None
+
+
 def _load_stations():
+    global _stations_cache
+    if _stations_cache is not None:
+        return _stations_cache
     path = os.path.join(DATA_PATH, "stations.json")
     with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        _stations_cache = json.load(f)
+    return _stations_cache
 
 
 def _calculate_question_count(total):

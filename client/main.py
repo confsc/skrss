@@ -17,6 +17,18 @@ from PyQt5.QtGui import QIcon
 from logic.single_instance import check_single_instance
 from styles import GLOBAL_APP_STYLE
 
+if False:
+    # PyInstaller static analysis hooks (ensures all dynamic imports are packaged in onefile EXE)
+    import requests  # noqa: F401
+    import ui.learning_window  # noqa: F401
+    import ui.quiz_window  # noqa: F401
+    import ui.student_form  # noqa: F401
+    import ui.waiting_dialog  # noqa: F401
+    import ui.quiz_dialog  # noqa: F401
+    import ui.photo_quiz_dialog  # noqa: F401
+    import ui.result_dialog  # noqa: F401
+    import logic.network  # noqa: F401
+
 
 def resource_path(relative_path):
     if hasattr(sys, "_MEIPASS"):
