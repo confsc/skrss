@@ -11,7 +11,7 @@ for p in [CLIENT_DIR, os.path.join(CLIENT_DIR, "ui"), os.path.join(CLIENT_DIR, "
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from data_loader import load_stations, resource_path
+from data_loader import load_stations, resource_path, get_cached_pixmap
 from specs_formatter import build_specs_html
 
 
@@ -49,3 +49,20 @@ def test_build_specs_html_for_all_stations():
         assert isinstance(html, str)
         assert "<table" in html
         assert st["name"] in html or "Тактико-технические" in html
+
+
+def test_pixmap_caching():
+    # Loading non-existent returns None
+    assert get_cached_pixmap("") is None
+    assert get_cached_pixmap("non_existent_img_12345.png") is None
+
+    # Loading valid image returns QPixmap and caches it
+    stations = load_stations()
+    stations_with_images = [s for s in stations if s.get("image")]
+    if stations_with_images:
+        img_rel = stations_with_images[0]["image"]
+        pix1 = get_cached_pixmap(img_rel)
+        assert pix1 is not None
+        assert not pix1.isNull()
+        pix2 = get_cached_pixmap(img_rel)
+        assert pix1 is pix2

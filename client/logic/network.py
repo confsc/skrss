@@ -106,13 +106,15 @@ class ApiClient:
         self.base_url = f"http://{ip}:{port}"
         self.timeout = 10
         self.proxies = NO_PROXY
+        self.session = requests.Session()
+        self.session.proxies.update(NO_PROXY)
+        self.session.trust_env = False
 
     def ping(self):
         try:
-            r = requests.get(
+            r = self.session.get(
                 self.base_url + API_PING,
                 timeout=self.timeout,
-                proxies=self.proxies,
             )
             return r.json().get("status") == "ok"
         except Exception as e:
@@ -121,10 +123,9 @@ class ApiClient:
 
     def quiz_info(self):
         try:
-            r = requests.get(
+            r = self.session.get(
                 self.base_url + API_QUIZ_INFO,
                 timeout=self.timeout,
-                proxies=self.proxies,
             )
             return r.json()
         except Exception as e:
@@ -133,11 +134,10 @@ class ApiClient:
 
     def register(self, fio, group_name):
         try:
-            r = requests.post(
+            r = self.session.post(
                 self.base_url + API_REGISTER,
                 json={"fio": fio, "group": group_name},
                 timeout=self.timeout,
-                proxies=self.proxies,
             )
             return r.status_code == 200
         except Exception as e:
@@ -146,22 +146,20 @@ class ApiClient:
 
     def disconnect(self, fio, group_name):
         try:
-            requests.post(
+            self.session.post(
                 self.base_url + API_DISCONNECT,
                 json={"fio": fio, "group": group_name},
                 timeout=self.timeout,
-                proxies=self.proxies,
             )
         except Exception:
             pass
 
     def start_quiz(self, fio, group_name):
         try:
-            r = requests.post(
+            r = self.session.post(
                 self.base_url + API_START,
                 json={"fio": fio, "group": group_name},
                 timeout=self.timeout,
-                proxies=self.proxies,
             )
             return r.status_code, r.json()
         except Exception as e:
@@ -170,7 +168,7 @@ class ApiClient:
 
     def finish_quiz(self, student_id, correct_count, score, percent, duration):
         try:
-            r = requests.post(
+            r = self.session.post(
                 self.base_url + API_FINISH,
                 json={
                     "student_id": student_id,
@@ -180,7 +178,6 @@ class ApiClient:
                     "duration": duration,
                 },
                 timeout=self.timeout,
-                proxies=self.proxies,
             )
             return r.status_code == 200
         except Exception as e:
@@ -197,11 +194,10 @@ class ApiClient:
             if group_name:
                 payload["group"] = group_name
 
-            requests.post(
+            self.session.post(
                 self.base_url + API_HEARTBEAT,
                 json=payload,
                 timeout=self.timeout,
-                proxies=self.proxies,
             )
         except Exception:
             pass

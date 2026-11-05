@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QColor, QCursor
 
-from logic.data_loader import load_stations, resource_path
+from logic.data_loader import load_stations, resource_path, get_cached_pixmap
 from logic.specs_formatter import build_specs_html
 
 from styles import (
@@ -278,9 +278,8 @@ class StationListWidget(QWidget):
         self.current_pixmap = None
 
         if station.get("image"):
-            img_path = resource_path(station["image"])
-            pix = QPixmap(img_path)
-            if not pix.isNull():
+            pix = get_cached_pixmap(station["image"])
+            if pix and not pix.isNull():
                 self.current_pixmap = pix
                 self.update_image()
                 self.zoom_hint.show()
@@ -314,6 +313,9 @@ class StationListWidget(QWidget):
             return
         w = max(200, self.image_label.width() - 16)
         h = max(150, self.image_label.height() - 16)
+        if getattr(self, "_last_img_size", None) == (w, h):
+            return
+        self._last_img_size = (w, h)
         self.image_label.setPixmap(
             self.current_pixmap.scaled(w, h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         )

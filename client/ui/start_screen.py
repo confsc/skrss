@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QPixmap, QColor, QCursor
 
-from logic.data_loader import resource_path
+from logic.data_loader import resource_path, get_cached_pixmap
 
 from styles import (
     COLOR_PRIMARY, COLOR_PRIMARY_DARK, COLOR_PRIMARY_HOVER,
@@ -152,9 +152,8 @@ class StartScreen(QMainWindow):
         self.img_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.img_label.setStyleSheet("border: none; background: transparent;")
 
-        bg_path = resource_path("images/start_background.png")
-        pix = QPixmap(bg_path)
-        if not pix.isNull():
+        pix = get_cached_pixmap("images/start_background.png")
+        if pix and not pix.isNull():
             self.current_pixmap = pix
         else:
             self.img_label.setText("📷 Иллюстрация комплекса")
@@ -192,6 +191,9 @@ class StartScreen(QMainWindow):
             return
         w = max(260, self.img_label.width() - 16)
         h = max(180, self.img_label.height() - 16)
+        if getattr(self, "_last_img_size", None) == (w, h):
+            return
+        self._last_img_size = (w, h)
         self.img_label.setPixmap(
             self.current_pixmap.scaled(w, h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         )

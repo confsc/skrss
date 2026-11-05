@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QPixmap, QColor, QCursor
 
-from logic.data_loader import resource_path
+from logic.data_loader import resource_path, get_cached_pixmap
 from ui.result_dialog import ResultDialog
 
 from styles import (
@@ -219,9 +219,8 @@ class PhotoQuizDialog(QDialog):
         image_label.setMinimumWidth(320)
         image_label.setStyleSheet("border: none; background: transparent;")
 
-        img_path = resource_path(photo.get("image", ""))
-        pix = QPixmap(img_path)
-        if not pix.isNull():
+        pix = get_cached_pixmap(photo.get("image", ""))
+        if pix and not pix.isNull():
             image_label.setPixmap(pix.scaled(380, 220, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         else:
             image_label.setText("📷 Фотография отсутствует")
